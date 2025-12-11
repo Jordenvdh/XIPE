@@ -4,8 +4,21 @@ FastAPI application for XIPE emission calculations
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import data, variables, calculations
-from app.core.config import settings
+
+# Support both local backend execution (cwd=backend) and Vercel serverless (cwd=repo root)
+try:
+    from app.api.routes import data, variables, calculations
+    from app.core.config import settings
+except ModuleNotFoundError:
+    import os
+    import sys
+
+    CURRENT_DIR = os.path.dirname(__file__)
+    BACKEND_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+    if BACKEND_ROOT not in sys.path:
+        sys.path.append(BACKEND_ROOT)
+    from app.api.routes import data, variables, calculations
+    from app.core.config import settings
 
 # Initialize FastAPI app
 app = FastAPI(
