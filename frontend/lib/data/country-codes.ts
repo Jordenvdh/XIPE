@@ -1,0 +1,48 @@
+/**
+ * Mapping of country names to ISO country codes
+ * Used for filtering city searches by country
+ */
+export const countryNameToCode: Record<string, string> = {
+  'Austria': 'AT',
+  'Belgium': 'BE',
+  'Bulgaria': 'BG',
+  'Croatia': 'HR',
+  'Cyprus': 'CY',
+  'Czech Republic': 'CZ',
+  'Denmark': 'DK',
+  'Estonia': 'EE',
+  'Finland': 'FI',
+  'France': 'FR',
+  'Germany': 'DE',
+  'Greece': 'GR',
+  'Hungary': 'HU',
+  'Iceland': 'IS',
+  'Ireland': 'IE',
+  'Italy': 'IT',
+  'Latvia': 'LV',
+  'Liechtenstein': 'LI',
+  'Lithuania': 'LT',
+  'Luxembourg': 'LU',
+  'Malta': 'MT',
+  'Netherlands': 'NL',
+  'Norway': 'NO',
+  'Poland': 'PL',
+  'Portugal': 'PT',
+  'Romania': 'RO',
+  'Slovakia': 'SK',
+  'Slovenia': 'SI',
+  'Spain': 'ES',
+  'Sweden': 'SE',
+  'Switzerland': 'CH',
+  'United Kingdom': 'GB',
+  'Turkey': 'TR',
+  'Ukraine': 'UA',
+};
+
+/**
+ * Get country code from country name
+ */
+export function getCountryCode(countryName: string): string | undefined {
+  return countryNameToCode[countryName];
+}
+

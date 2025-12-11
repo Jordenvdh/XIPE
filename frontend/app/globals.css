@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+:root {
+  --background: #1a1a1a;
+  --foreground: #e5e5e5;
+  --dark-surface: #2d2d2d;
+  --brand-blue: #3b82f6;
+  --brand-orange: #f97316;
+  --table-input: #fef3c7;
+  --table-input-hover: #fde68a;
+  --text-light: #e5e5e5;
+  --text-dark: #1a1a1a;
+}
+
+/* Light theme variables */
+.light {
+  --background: #ffffff;
+  --foreground: #111827;
+  --dark-surface: #f9fafb;
+  --text-light: #111827;
+  --text-dark: #111827;
+  --border-color: #e5e7eb;
+  --hover-bg: #f3f4f6;
+  --active-bg: #e5e7eb;
+}
+
+/* Dark theme variables */
+.dark {
+  --background: #1a1a1a;
+  --foreground: #e5e5e5;
+  --dark-surface: #2d2d2d;
+  --text-light: #e5e5e5;
+  --text-dark: #1a1a1a;
+  --border-color: #4a4a4a;
+  --hover-bg: #3a3a3a;
+  --active-bg: #4a4a4a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-dark-surface: var(--dark-surface);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-orange: var(--brand-orange);
+  --color-table-input: var(--table-input);
+  --color-table-input-hover: var(--table-input-hover);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Force dark text colors in light mode - Perplexity's suggestion: use !important for specificity */
+.light .text-gray-900,
+.light button.text-gray-900 {
+  color: rgb(17 24 31) !important; /* gray-900 */
+}
+
+.light .text-gray-800,
+.light button.text-gray-800 {
+  color: rgb(31 41 55) !important; /* gray-800 */
+}
+
+.light .text-gray-700,
+.light button.text-gray-700 {
+  color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+/* Ensure hover states work properly - override base text colors on hover */
+.light a:hover.text-gray-900,
+.light button:hover.text-gray-900,
+.light .hover\:text-gray-900:hover {
+  color: rgb(17 24 31) !important;
+}
+
+.light a:hover.text-white,
+.light button:hover.text-white,
+.light .hover\:text-white:hover {
+  color: rgb(255 255 255) !important;
+}
+
+/* Ensure brand-blue hover text is visible */
+.light .hover\:text-brand-blue:hover,
+.light a:hover .hover\:text-brand-blue {
+  color: rgb(59 130 246) !important; /* brand-blue */
+}
+
+/* Ensure sidebar links maintain text visibility on hover */
+.light aside a:hover span {
+  color: inherit !important;
+}
+
+.light aside a:hover.text-brand-blue span,
+.light aside a:hover .text-brand-blue {
+  color: rgb(59 130 246) !important;
+}
+
+/* Ensure button hover states work */
+.light button.bg-brand-blue:hover {
+  background-color: rgb(37 99 235) !important; /* blue-600 */
+}
+
+.light button.bg-brand-blue:active {
+  background-color: rgb(29 78 216) !important; /* blue-700 */
+}
+
+/* Default text color for light mode elements */
+.light p:not([class*="text-"]),
+.light span:not([class*="text-"]),
+.light div:not([class*="text-"]),
+.light h1:not([class*="text-"]),
+.light h2:not([class*="text-"]),
+.light h3:not([class*="text-"]),
+.light h4:not([class*="text-"]),
+.light h5:not([class*="text-"]),
+.light h6:not([class*="text-"]),
+.light label:not([class*="text-"]),
+.light th:not([class*="text-"]),
+.light td:not([class*="text-"]) {
+  color: rgb(17 24 31); /* gray-900 */
+}
+
+/* Ensure buttons with text-gray-900 have dark text in light mode */
+.light button.text-gray-900 {
+  color: rgb(17 24 31) !important;
+}
+
+/* Focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+
+/* Table input styling to match Streamlit */
+input[type="number"].bg-table-input,
+input[type="text"].bg-table-input {
+  background-color: var(--table-input) !important;
+  color: var(--text-dark) !important;
+}
+
+input[type="number"].bg-table-input:hover,
+input[type="text"].bg-table-input:hover {
+  background-color: var(--table-input-hover) !important;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--dark-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4a4a4a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5a5a5a;
+}
