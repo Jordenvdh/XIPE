@@ -3,5 +3,8 @@
   "framework": "nextjs",
   "installCommand": "npm install && cd frontend && npm install",
   "buildCommand": "npm run vercel-build",
-  "outputDirectory": "frontend/.next"
+  "outputDirectory": "frontend/.next",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/backend.py" }
+  ]
 }
