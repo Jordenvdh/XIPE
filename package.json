@@ -1,0 +1,13 @@
+{
+  "name": "xipe-root",
+  "private": true,
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd frontend && npm run start",
+    "vercel-build": "cd frontend && npm run build"
+  },
+  "dependencies": {
+    "next": "16.0.8"
+  }
+}
