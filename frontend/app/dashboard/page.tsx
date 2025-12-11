@@ -154,25 +154,33 @@ export default function DashboardPage() {
         loadImageAsDataUrl('/images/GEMINI_BANNER2.png'),
       ]);
 
+      const logoTop = 10;
+      let cenexHeight = 0;
+      let geminiHeight = 0;
+
       if (cenexLogo) {
         const props = doc.getImageProperties(cenexLogo);
         const logoWidth = 34;
         const logoHeight = (props.height / props.width) * logoWidth;
-        doc.addImage(cenexLogo, 'PNG', margin, 10, logoWidth, logoHeight);
+        cenexHeight = logoHeight;
+        doc.addImage(cenexLogo, 'PNG', margin, logoTop, logoWidth, logoHeight);
       }
 
       if (geminiLogo) {
         const props = doc.getImageProperties(geminiLogo);
         const logoWidth = 38;
         const logoHeight = (props.height / props.width) * logoWidth;
-        doc.addImage(geminiLogo, 'PNG', pageWidth - margin - logoWidth, 10, logoWidth, logoHeight);
+        geminiHeight = logoHeight;
+        doc.addImage(geminiLogo, 'PNG', pageWidth - margin - logoWidth, logoTop, logoWidth, logoHeight);
       }
 
+      const headerY = logoTop + Math.max(cenexHeight, geminiHeight, 0) + 10;
+
       doc.setFontSize(16);
-      doc.text('Emission results summary', margin, 32);
+      doc.text('Emission results summary', margin, headerY);
       doc.setFontSize(11);
-      doc.text(`City: ${dashboard.cityName || 'N/A'}`, margin, 40);
-      doc.text(`Country: ${dashboard.country || 'N/A'}`, margin, 46);
+      doc.text(`City: ${dashboard.cityName || 'N/A'}`, margin, headerY + 8);
+      doc.text(`Country: ${dashboard.country || 'N/A'}`, margin, headerY + 14);
 
       const perModeRows = ['Car', 'Bike', 'Moped', 'e-Scooter', 'Other'].map((mode) => {
         const modeResult = results.perMode[mode] || {};
