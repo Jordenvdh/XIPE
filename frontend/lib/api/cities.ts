@@ -108,7 +108,7 @@ export async function searchEuropeanCities(
           countryCode: address.country_code?.toUpperCase() || '',
         };
       })
-      .filter(city => city.name && city.name.length > 0); // Remove empty names
+      .filter((city: CityResult) => city.name && city.name.length > 0); // Remove empty names
 
     // Remove duplicates (same city name and country)
     const uniqueCities = cities.filter((city, index, self) =>
