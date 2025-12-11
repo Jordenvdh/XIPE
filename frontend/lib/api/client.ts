@@ -5,13 +5,13 @@ import axios from 'axios';
 
 /**
  * Base API URL:
- * - Use NEXT_PUBLIC_API_URL when provided
- * - In production fall back to relative `/api` to avoid triggering local network prompts
- * - Only use localhost during local development
+ * - Use NEXT_PUBLIC_API_URL when provided (should include protocol/host)
+ * - In production, use relative origin ('') and rely on /api/* paths
+ * - In development, default to localhost backend
  */
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '/api');
+  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '');
 
 const apiClient = axios.create({
   baseURL: API_URL,
