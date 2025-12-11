@@ -4,7 +4,7 @@
  * Editable Data Table Component
  * Displays variables with editable "User Input" column and read-only "Default Value" column
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { VariableRow } from '@/lib/types';
 
 interface DataTableProps {
@@ -12,21 +12,32 @@ interface DataTableProps {
   onSave: (variables: VariableRow[]) => void;
   title?: string;
   disabled?: boolean;
+  /**
+   * Optional change handler for live updates (e.g., syncing context/local state)
+   */
+  onChange?: (variables: VariableRow[]) => void;
 }
 
 export default function DataTable({ 
   variables, 
   onSave, 
   title,
-  disabled = false 
+  disabled = false,
+  onChange,
 }: DataTableProps) {
   const [editedVariables, setEditedVariables] = useState<VariableRow[]>(variables);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Keep local state in sync when parent-provided variables change
+  useEffect(() => {
+    setEditedVariables(variables);
+  }, [variables]);
 
   const handleInputChange = (index: number, value: number) => {
     const updated = [...editedVariables];
     updated[index] = { ...updated[index], userInput: value };
     setEditedVariables(updated);
+    onChange?.(updated);
   };
 
   const handleSave = async () => {
@@ -56,8 +67,12 @@ export default function DataTable({
             </tr>
           </thead>
           <tbody>
+            {/* Render editable rows with a theme-aware hover background */}
             {editedVariables.map((variable, index) => (
-              <tr key={index} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+              <tr 
+                key={index} 
+                className="border-b border-gray-200 dark:border-gray-700 hover:bg-[var(--hover-bg)] transition-colors"
+              >
                 <td className="p-3 text-gray-900 dark:text-white">{variable.variable}</td>
                 <td className="p-3">
                   <input

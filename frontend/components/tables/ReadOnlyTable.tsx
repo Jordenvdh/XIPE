@@ -39,8 +39,12 @@ export default function ReadOnlyTable({
             </tr>
           </thead>
           <tbody>
+            {/* Render read-only rows with theme-matched hover styling */}
             {data.map((row, rowIndex) => (
-              <tr key={rowIndex} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+              <tr 
+                key={rowIndex} 
+                className="border-b border-gray-200 dark:border-gray-700 hover:bg-[var(--hover-bg)] transition-colors"
+              >
                 {columns.map((column, colIndex) => {
                   const value = row[column];
                   return (

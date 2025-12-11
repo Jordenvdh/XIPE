@@ -10,6 +10,8 @@
   --table-input-hover: #fde68a;
   --text-light: #e5e5e5;
   --text-dark: #1a1a1a;
+  --hover-bg: #f3f4f6;
+  --active-bg: #e5e7eb;
 }
 
 /* Light theme variables */
