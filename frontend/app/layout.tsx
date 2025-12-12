@@ -5,6 +5,11 @@ import { Providers } from "@/components/providers/Providers";
 export const metadata: Metadata = {
   title: "XIPE Model - Cross Impact Performance Emissions",
   description: "The XIPE model estimates the effect shared mobility has on CO2 and air pollution emissions in a city or region.",
+  icons: {
+    icon: "/images/favicon.ico",
+    shortcut: "/images/favicon.ico",
+    apple: "/images/favicon.ico",
+  },
 };
 
 export default function RootLayout({
