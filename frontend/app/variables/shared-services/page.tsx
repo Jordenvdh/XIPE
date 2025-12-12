@@ -4,17 +4,18 @@
  * Variables for Shared Services Page
  * Display and edit variables for shared mobility services
  */
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import DataTable from '@/components/tables/DataTable';
 import Alert from '@/components/forms/Alert';
 import { useApp } from '@/context/AppContext';
-import { saveSharedServiceVariables } from '@/lib/api/variables';
+import { saveSharedServiceVariables, getSharedServicesVariables } from '@/lib/api/variables';
 import type { VariableRow } from '@/lib/types';
 
 export default function SharedServicesPage() {
-  const { sharedModes } = useApp();
+  const { sharedModes, modalSplit, variables } = useApp();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const handleSave = async (service: string, variables: VariableRow[]) => {
     try {
@@ -26,9 +27,46 @@ export default function SharedServicesPage() {
     }
   };
 
-  // Default variables for each shared service type
-  // These would normally be loaded from the backend
-  const getDefaultVariables = (serviceType: string): VariableRow[] => {
+  /**
+   * Helper function to update default values based on modal split from dashboard
+   * This ensures "Replaces X by (%)" and "Average trip distance when replacing X" 
+   * use the values from the dashboard modal split
+   */
+  const updateDefaultsWithModalSplit = (baseVars: VariableRow[]): VariableRow[] => {
+    return baseVars.map((varRow) => {
+      let newDefault = varRow.defaultValue;
+      
+      // Map modal split percentages to "Replaces X by (%)" variables
+      if (varRow.variable === 'Replaces private car by (%)') {
+        newDefault = modalSplit.privateCar.split;
+      } else if (varRow.variable === 'Replaces PT road by (%)') {
+        newDefault = modalSplit.publicTransport.road.split;
+      } else if (varRow.variable === 'Replaces PT rail by (%)') {
+        newDefault = modalSplit.publicTransport.rail.split;
+      } else if (varRow.variable === 'Replaces cycling by (%)') {
+        newDefault = modalSplit.activeModes.cycling.split;
+      } else if (varRow.variable === 'Replaces walking by (%)') {
+        newDefault = modalSplit.activeModes.walking.split;
+      }
+      // Map modal split distances to "Average trip distance when replacing X" variables
+      else if (varRow.variable === 'Average trip distance of the shared mode when replacing car (km)') {
+        newDefault = modalSplit.privateCar.distance;
+      } else if (varRow.variable === 'Average trip distance of the shared mode when replacing PT road (km)') {
+        newDefault = modalSplit.publicTransport.road.distance;
+      } else if (varRow.variable === 'Average trip distance of the shared mode when replacing PT rail (km)') {
+        newDefault = modalSplit.publicTransport.rail.distance;
+      } else if (varRow.variable === 'Average trip distance of the shared mode when replacing cycling (km)') {
+        newDefault = modalSplit.activeModes.cycling.distance;
+      } else if (varRow.variable === 'Average trip distance of the shared mode when replacing walking (km)') {
+        newDefault = modalSplit.activeModes.walking.distance;
+      }
+      
+      return { ...varRow, defaultValue: newDefault };
+    });
+  };
+
+  // Base default variables for each shared service type (without modal split values)
+  const getBaseDefaultVariables = (serviceType: string): VariableRow[] => {
     const defaults: Record<string, VariableRow[]> = {
       ice_car: [
         { variable: 'Average number of trips per day', userInput: 0, defaultValue: 5.0 },
@@ -143,6 +181,47 @@ export default function SharedServicesPage() {
     return defaults[serviceType] || [];
   };
 
+  /**
+   * Load variables from API on mount
+   * Variables will be updated with modal split defaults via useMemo
+   */
+  useEffect(() => {
+    const loadVariables = async () => {
+      try {
+        // Variables are loaded and stored in context by AppContext
+        // We'll use those if available, otherwise use defaults
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading shared services variables:', error);
+        setLoading(false);
+      }
+    };
+    loadVariables();
+  }, []);
+
+  /**
+   * Get default variables for a service type, updated with modal split values
+   * This ensures defaults reflect the dashboard modal split inputs
+   */
+  const getDefaultVariables = (serviceType: string): VariableRow[] => {
+    const baseVars = getBaseDefaultVariables(serviceType);
+    // Check if we have saved variables from context/API, otherwise use defaults with modal split
+    const savedVars = variables.sharedServices?.[serviceType];
+    const varsToUse = savedVars && savedVars.length > 0 ? savedVars : baseVars;
+    
+    // Update defaults with modal split values (preserving user inputs if any)
+    return updateDefaultsWithModalSplit(varsToUse);
+  };
+
+  // Memoize variables for each service type to avoid recalculating on every render
+  const iceCarVars = useMemo(() => getDefaultVariables('ice_car'), [modalSplit, variables.sharedServices]);
+  const iceMopedVars = useMemo(() => getDefaultVariables('ice_moped'), [modalSplit, variables.sharedServices]);
+  const bikeVars = useMemo(() => getDefaultVariables('bike'), [modalSplit, variables.sharedServices]);
+  const eCarVars = useMemo(() => getDefaultVariables('e_car'), [modalSplit, variables.sharedServices]);
+  const eBikeVars = useMemo(() => getDefaultVariables('e_bike'), [modalSplit, variables.sharedServices]);
+  const eMopedVars = useMemo(() => getDefaultVariables('e_moped'), [modalSplit, variables.sharedServices]);
+  const eScooterVars = useMemo(() => getDefaultVariables('e_scooter'), [modalSplit, variables.sharedServices]);
+
   const otherModeName = sharedModes.find(m => m.mode === 'Other')?.mode || 'Other';
 
   return (
@@ -178,49 +257,49 @@ export default function SharedServicesPage() {
 
         {/* Shared ICE Car */}
         <DataTable
-          variables={getDefaultVariables('ice_car')}
+          variables={iceCarVars}
           onSave={(vars) => handleSave('ice_car', vars)}
           title="Shared ICE Car"
         />
 
         {/* Shared ICE Moped */}
         <DataTable
-          variables={getDefaultVariables('ice_moped')}
+          variables={iceMopedVars}
           onSave={(vars) => handleSave('ice_moped', vars)}
           title="Shared ICE Moped"
         />
 
         {/* Shared Bike */}
         <DataTable
-          variables={getDefaultVariables('bike')}
+          variables={bikeVars}
           onSave={(vars) => handleSave('bike', vars)}
           title="Shared bike"
         />
 
         {/* Shared e-Car */}
         <DataTable
-          variables={getDefaultVariables('e_car')}
+          variables={eCarVars}
           onSave={(vars) => handleSave('e_car', vars)}
           title="Shared e-Car"
         />
 
         {/* Shared e-Bike */}
         <DataTable
-          variables={getDefaultVariables('e_bike')}
+          variables={eBikeVars}
           onSave={(vars) => handleSave('e_bike', vars)}
           title="Shared e-bike"
         />
 
         {/* Shared e-Moped */}
         <DataTable
-          variables={getDefaultVariables('e_moped')}
+          variables={eMopedVars}
           onSave={(vars) => handleSave('e_moped', vars)}
           title="Shared e-Moped"
         />
 
         {/* Shared e-Scooter */}
         <DataTable
-          variables={getDefaultVariables('e_scooter')}
+          variables={eScooterVars}
           onSave={(vars) => handleSave('e_scooter', vars)}
           title="Shared e-Scooter"
         />
@@ -233,14 +312,14 @@ export default function SharedServicesPage() {
           </p>
         </div>
         <DataTable
-          variables={getDefaultVariables('ice_car')}
+          variables={iceCarVars}
           onSave={(vars) => handleSave('other', vars)}
           title={`Shared ${otherModeName}`}
         />
 
         {/* Shared e-Other */}
         <DataTable
-          variables={getDefaultVariables('e_car')}
+          variables={eCarVars}
           onSave={(vars) => handleSave('e_other', vars)}
           title={`Shared e-${otherModeName}`}
         />
