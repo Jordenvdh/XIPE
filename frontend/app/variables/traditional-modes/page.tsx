@@ -15,6 +15,7 @@ import {
   getTraditionalModesVariables,
   saveTraditionalModeVariables 
 } from '@/lib/api/variables';
+import { getCountryData } from '@/lib/api/data';
 import type { VariableRow } from '@/lib/types';
 
 // Default variables (from Streamlit code)
@@ -52,7 +53,7 @@ const defaultActiveTransportVars: VariableRow[] = [
 ];
 
 export default function TraditionalModesPage() {
-  const { updateVariables, variables } = useApp();
+  const { updateVariables, variables, dashboard } = useApp();
   // Seed local state from context so edits persist across navigation without saving.
   const [generalVars, setGeneralVars] = useState<VariableRow[]>(
     variables.general?.length ? variables.general : defaultGeneralVars
@@ -87,6 +88,53 @@ export default function TraditionalModesPage() {
     loadVariables();
   }, []);
 
+  // Update general variables when country changes
+  useEffect(() => {
+    if (dashboard.country && !loading) {
+      loadCountrySpecificDefaults(dashboard.country);
+    }
+  }, [dashboard.country, loading]);
+
+  /**
+   * Load country-specific default values and update general variables
+   * This ensures variables reflect the selected country's data
+   */
+  const loadCountrySpecificDefaults = async (country: string) => {
+    try {
+      const countryData = await getCountryData(country);
+      
+      // Update general variables with country-specific defaults
+      // Use current state to preserve any user inputs
+      setGeneralVars((currentVars) => {
+        const updatedGeneralVars = currentVars.map((varRow) => {
+          // Only update defaults, preserve user inputs
+          let newDefault = varRow.defaultValue;
+          
+          // Map country data to specific variables
+          if (varRow.variable === 'Average CO2 emission intensity for electricity generation (gCO2/kWh)') {
+            newDefault = countryData.electricityCo2;
+          } else if (varRow.variable === 'Average age of the car fleet (years)') {
+            newDefault = countryData.averageAge;
+          } else if (varRow.variable === 'Percentage of petrol cars in the current fleet (%)') {
+            newDefault = countryData.fuelDistribution.petrol;
+          } else if (varRow.variable === 'Percentage of diesel cars in the current fleet (%)') {
+            newDefault = countryData.fuelDistribution.diesel;
+          } else if (varRow.variable === 'Percentage of electric cars in the current fleet (%)') {
+            newDefault = countryData.fuelDistribution.ev;
+          }
+          
+          return { ...varRow, defaultValue: newDefault };
+        });
+        
+        updateVariables({ general: updatedGeneralVars });
+        return updatedGeneralVars;
+      });
+    } catch (error) {
+      console.error('Error loading country-specific defaults:', error);
+      // Don't show error to user, just log it
+    }
+  };
+
   const loadVariables = async () => {
     try {
       const [general, traditional] = await Promise.all([
@@ -100,14 +148,45 @@ export default function TraditionalModesPage() {
       const apiPtRail = traditional?.ptRail?.length ? traditional.ptRail : defaultPtRailVars;
       const apiActive = traditional?.activeTransport?.length ? traditional.activeTransport : defaultActiveTransportVars;
 
-      setGeneralVars(general.variables?.length ? general.variables : defaultGeneralVars);
+      // Start with API-loaded or default general vars
+      let initialGeneralVars = general.variables?.length ? general.variables : defaultGeneralVars;
+      
+      // If country is selected, update defaults with country-specific data
+      if (dashboard.country) {
+        try {
+          const countryData = await getCountryData(dashboard.country);
+          initialGeneralVars = initialGeneralVars.map((varRow) => {
+            let newDefault = varRow.defaultValue;
+            
+            // Map country data to specific variables
+            if (varRow.variable === 'Average CO2 emission intensity for electricity generation (gCO2/kWh)') {
+              newDefault = countryData.electricityCo2;
+            } else if (varRow.variable === 'Average age of the car fleet (years)') {
+              newDefault = countryData.averageAge;
+            } else if (varRow.variable === 'Percentage of petrol cars in the current fleet (%)') {
+              newDefault = countryData.fuelDistribution.petrol;
+            } else if (varRow.variable === 'Percentage of diesel cars in the current fleet (%)') {
+              newDefault = countryData.fuelDistribution.diesel;
+            } else if (varRow.variable === 'Percentage of electric cars in the current fleet (%)') {
+              newDefault = countryData.fuelDistribution.ev;
+            }
+            
+            return { ...varRow, defaultValue: newDefault };
+          });
+        } catch (error) {
+          console.error('Error loading country data during initial load:', error);
+          // Continue with defaults if country data fails
+        }
+      }
+
+      setGeneralVars(initialGeneralVars);
       setPrivateCarVars(apiPrivateCar);
       setPtRoadVars(apiPtRoad);
       setPtRailVars(apiPtRail);
       setActiveTransportVars(apiActive);
 
       updateVariables({
-        general: general.variables?.length ? general.variables : defaultGeneralVars,
+        general: initialGeneralVars,
         traditionalModes: {
           private_car: apiPrivateCar,
           pt_road: apiPtRoad,
