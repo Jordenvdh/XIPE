@@ -16,3 +16,4 @@ from backend.app.main import app as fastapi_app  # noqa: E402
 
 # Vercel Python functions expect a top-level "app" callable for ASGI.
 app = fastapi_app
+

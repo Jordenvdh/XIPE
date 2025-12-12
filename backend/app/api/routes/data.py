@@ -92,3 +92,4 @@ async def get_electricity_intensity():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading electricity intensity data: {str(e)}")
 
+

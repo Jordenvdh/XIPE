@@ -95,6 +95,13 @@ export default function TraditionalModesPage() {
     }
   }, [dashboard.country, loading]);
 
+  // Sync generalVars state changes to context (but not during initial render)
+  useEffect(() => {
+    if (!loading) {
+      updateVariables({ general: generalVars });
+    }
+  }, [generalVars, loading, updateVariables]);
+
   /**
    * Load country-specific default values and update general variables
    * This ensures variables reflect the selected country's data
@@ -126,7 +133,7 @@ export default function TraditionalModesPage() {
           return { ...varRow, defaultValue: newDefault };
         });
         
-        updateVariables({ general: updatedGeneralVars });
+        // Don't call updateVariables here - let the useEffect handle it
         return updatedGeneralVars;
       });
     } catch (error) {

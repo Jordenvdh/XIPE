@@ -60,3 +60,4 @@ export async function saveSharedServiceVariables(
   await apiClient.post(`/api/variables/shared-services/${service}`, variables);
 }
 
+

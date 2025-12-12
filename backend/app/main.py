@@ -63,3 +63,4 @@ async def api_health_check():
     """Health check endpoint under /api for serverless rewrite"""
     return {"status": "healthy"}
 
+

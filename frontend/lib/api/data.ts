@@ -36,3 +36,4 @@ export async function getElectricityIntensity() {
   return response.data;
 }
 
+

@@ -132,3 +132,4 @@ async def save_shared_service_variables(service: str, variables: List[VariableRo
     _variables_storage["sharedServices"][service] = [v.dict() for v in variables]
     return {"message": f"{service} variables saved successfully"}
 
+
