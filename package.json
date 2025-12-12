@@ -8,6 +8,7 @@
     "vercel-build": "cd frontend && npm run build"
   },
   "dependencies": {
-    "next": "16.0.8"
+    "next": "16.0.10"
   }
 }
+
