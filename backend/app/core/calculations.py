@@ -243,10 +243,14 @@ def _prepare_nms_variables(
                 for idx, default_val in enumerate(default_values):
                     if idx < len(df_new):
                         df_new.at[idx, "defaultValue"] = default_val
-        
-        # Use defaults if user input is zero
-        if df_new["userInput"].sum() == 0:
-            df_new["userInput"] = df_new["defaultValue"]
+
+        # Use defaults where the user did not provide an input.
+        # This mirrors the behaviour used for traditional and general variables:
+        # any row with userInput == 0 inherits the (possibly modal‑split‑adjusted)
+        # defaultValue, while rows with a non‑zero userInput keep the override.
+        df_new["userInput"] = np.where(
+            df_new["userInput"] == 0, df_new["defaultValue"], df_new["userInput"]
+        )
         
         df_new = df_new.drop(columns=["defaultValue"])
         df_new = df_new.rename(columns={"userInput": name})
