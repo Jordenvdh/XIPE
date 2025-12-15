@@ -189,14 +189,28 @@ export default function TraditionalModesPage() {
         getTraditionalModesVariables(),
       ]);
 
-      // Hydrate local and global state from API, falling back to defaults when missing
-      const apiPrivateCar = traditional?.privateCar?.length ? traditional.privateCar : defaultPrivateCarVars;
-      const apiPtRoad = traditional?.ptRoad?.length ? traditional.ptRoad : defaultPtRoadVars;
-      const apiPtRail = traditional?.ptRail?.length ? traditional.ptRail : defaultPtRailVars;
-      const apiActive = traditional?.activeTransport?.length ? traditional.activeTransport : defaultActiveTransportVars;
+      // Hydrate local and global state from API, falling back to context (saved values),
+      // then to defaults when missing.
+      // This ensures that user inputs saved in context/localStorage persist across
+      // navigation and page refreshes.
+      const apiPrivateCar = traditional?.privateCar?.length 
+        ? traditional.privateCar 
+        : (variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar || defaultPrivateCarVars);
+      const apiPtRoad = traditional?.ptRoad?.length 
+        ? traditional.ptRoad 
+        : (variables.traditionalModes?.pt_road || variables.traditionalModes?.ptRoad || defaultPtRoadVars);
+      const apiPtRail = traditional?.ptRail?.length 
+        ? traditional.ptRail 
+        : (variables.traditionalModes?.pt_rail || variables.traditionalModes?.ptRail || defaultPtRailVars);
+      const apiActive = traditional?.activeTransport?.length 
+        ? traditional.activeTransport 
+        : (variables.traditionalModes?.active_transport || variables.traditionalModes?.activeTransport || defaultActiveTransportVars);
 
-      // Start with API-loaded or default general vars
-      let initialGeneralVars = general.variables?.length ? general.variables : defaultGeneralVars;
+      // Start with API-loaded, then context (saved values), then defaults
+      // This ensures user inputs persist across navigation/refresh
+      let initialGeneralVars = general.variables?.length 
+        ? general.variables 
+        : (variables.general?.length ? variables.general : defaultGeneralVars);
       
       // If country is selected, update defaults with country-specific data
       if (dashboard.country) {
@@ -265,7 +279,15 @@ export default function TraditionalModesPage() {
     try {
       await saveTraditionalModeVariables('private_car', variables);
       setPrivateCarVars(variables);
-      updateVariables({ traditionalModes: { ...buildTraditionalContext, private_car: variables } });
+      // Use current local state values to ensure we preserve all modes
+      updateVariables({ 
+        traditionalModes: { 
+          private_car: variables,
+          pt_road: ptRoadVars,
+          pt_rail: ptRailVars,
+          active_transport: activeTransportVars,
+        } 
+      });
       setSaveMessage('Private Car variables saved successfully!');
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (error) {
@@ -277,7 +299,15 @@ export default function TraditionalModesPage() {
     try {
       await saveTraditionalModeVariables('pt_road', variables);
       setPtRoadVars(variables);
-      updateVariables({ traditionalModes: { ...buildTraditionalContext, pt_road: variables } });
+      // Use current local state values to ensure we preserve all modes
+      updateVariables({ 
+        traditionalModes: { 
+          private_car: privateCarVars,
+          pt_road: variables,
+          pt_rail: ptRailVars,
+          active_transport: activeTransportVars,
+        } 
+      });
       setSaveMessage('Public Transport Road variables saved successfully!');
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (error) {
@@ -289,7 +319,15 @@ export default function TraditionalModesPage() {
     try {
       await saveTraditionalModeVariables('pt_rail', variables);
       setPtRailVars(variables);
-      updateVariables({ traditionalModes: { ...buildTraditionalContext, pt_rail: variables } });
+      // Use current local state values to ensure we preserve all modes
+      updateVariables({ 
+        traditionalModes: { 
+          private_car: privateCarVars,
+          pt_road: ptRoadVars,
+          pt_rail: variables,
+          active_transport: activeTransportVars,
+        } 
+      });
       setSaveMessage('Public Transport Rail variables saved successfully!');
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (error) {
@@ -301,7 +339,15 @@ export default function TraditionalModesPage() {
     try {
       await saveTraditionalModeVariables('active_transport', variables);
       setActiveTransportVars(variables);
-      updateVariables({ traditionalModes: { ...buildTraditionalContext, active_transport: variables } });
+      // Use current local state values to ensure we preserve all modes
+      updateVariables({ 
+        traditionalModes: { 
+          private_car: privateCarVars,
+          pt_road: ptRoadVars,
+          pt_rail: ptRailVars,
+          active_transport: variables,
+        } 
+      });
       setSaveMessage('Active Transport variables saved successfully!');
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (error) {
@@ -330,10 +376,6 @@ export default function TraditionalModesPage() {
             All variables on this page have default values displayed. If the user has specific variable 
             values they can fill these in the User Input column, this will override the default values 
             in the calculations.
-          </p>
-          <p>
-            <strong>Calculations will use the whole User Input column. Therefore, when using user input 
-            be sure to fill in all user input cells, copy default values where needed.</strong>
           </p>
           <p>
             Changes on the Variables pages will directly change the Estimated Emission Change tables 
@@ -366,7 +408,15 @@ export default function TraditionalModesPage() {
           variables={privateCarVars.length > 0 ? privateCarVars : defaultPrivateCarVars}
           onChange={(rows) => {
             setPrivateCarVars(rows);
-            updateVariables({ traditionalModes: { ...buildTraditionalContext, private_car: rows } });
+            // Update context immediately so edits persist even before clicking Save
+            updateVariables({ 
+              traditionalModes: { 
+                private_car: rows,
+                pt_road: ptRoadVars,
+                pt_rail: ptRailVars,
+                active_transport: activeTransportVars,
+              } 
+            });
           }}
           onSave={handleSavePrivateCar}
           title="Private Car (per vehicle km)"
@@ -377,7 +427,15 @@ export default function TraditionalModesPage() {
           variables={ptRoadVars.length > 0 ? ptRoadVars : defaultPtRoadVars}
           onChange={(rows) => {
             setPtRoadVars(rows);
-            updateVariables({ traditionalModes: { ...buildTraditionalContext, pt_road: rows } });
+            // Update context immediately so edits persist even before clicking Save
+            updateVariables({ 
+              traditionalModes: { 
+                private_car: privateCarVars,
+                pt_road: rows,
+                pt_rail: ptRailVars,
+                active_transport: activeTransportVars,
+              } 
+            });
           }}
           onSave={handleSavePtRoad}
           title="Public Transport Road (per passenger km)"
@@ -388,7 +446,15 @@ export default function TraditionalModesPage() {
           variables={ptRailVars.length > 0 ? ptRailVars : defaultPtRailVars}
           onChange={(rows) => {
             setPtRailVars(rows);
-            updateVariables({ traditionalModes: { ...buildTraditionalContext, pt_rail: rows } });
+            // Update context immediately so edits persist even before clicking Save
+            updateVariables({ 
+              traditionalModes: { 
+                private_car: privateCarVars,
+                pt_road: ptRoadVars,
+                pt_rail: rows,
+                active_transport: activeTransportVars,
+              } 
+            });
           }}
           onSave={handleSavePtRail}
           title="Public Transport Rail (per passenger km)"
@@ -399,7 +465,15 @@ export default function TraditionalModesPage() {
           variables={activeTransportVars.length > 0 ? activeTransportVars : defaultActiveTransportVars}
           onChange={(rows) => {
             setActiveTransportVars(rows);
-            updateVariables({ traditionalModes: { ...buildTraditionalContext, active_transport: rows } });
+            // Update context immediately so edits persist even before clicking Save
+            updateVariables({ 
+              traditionalModes: { 
+                private_car: privateCarVars,
+                pt_road: ptRoadVars,
+                pt_rail: ptRailVars,
+                active_transport: rows,
+              } 
+            });
           }}
           onSave={handleSaveActiveTransport}
           title="Active Transport (per vehicle km)"

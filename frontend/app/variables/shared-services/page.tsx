@@ -344,10 +344,6 @@ export default function SharedServicesPage() {
             in the calculations.
           </p>
           <p>
-            <strong>Calculations will use the whole User Input column. Therefore, when using user input 
-            be sure to fill in all user input cells, copy default values where needed.</strong>
-          </p>
-          <p>
             Changes on the Variables pages will directly change the Estimated Emission Change tables 
             displayed on the Dashboard page.
           </p>
