@@ -35,6 +35,7 @@ export default function DashboardPage() {
     setResults,
     setLoading,
     setError,
+    resetState,
   } = useApp();
 
   const [countries, setCountries] = useState<string[]>([]);
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const [isLoadingCountryData, setIsLoadingCountryData] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Set mounted flag to prevent hydration mismatch
   useEffect(() => {
@@ -275,6 +277,85 @@ export default function DashboardPage() {
         alternateRowStyles: { fillColor: [245, 248, 255] },
       });
 
+      // Add input values section
+      const afterAirY = (doc as any).lastAutoTable?.finalY || startY;
+      let currentY = afterAirY + 15;
+
+      // Check if we need a new page
+      if (currentY > 250) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text('Input values', margin, currentY);
+      currentY += 8;
+
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      doc.text(`Number of inhabitants: ${formatNumber(dashboard.inhabitants, 0)}`, margin, currentY);
+      currentY += 6;
+
+      // Modal split section
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'bold');
+      doc.text('Modal split', margin, currentY);
+      currentY += 6;
+
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      const modalSplitRows = [
+        ['Private Car', `${formatNumber(modalSplit.privateCar.split, 1)}%`, `${formatNumber(modalSplit.privateCar.distance, 1)} km`],
+        ['PT Road', `${formatNumber(modalSplit.publicTransport.road.split, 1)}%`, `${formatNumber(modalSplit.publicTransport.road.distance, 1)} km`],
+        ['PT Rail', `${formatNumber(modalSplit.publicTransport.rail.split, 1)}%`, `${formatNumber(modalSplit.publicTransport.rail.distance, 1)} km`],
+        ['Cycling', `${formatNumber(modalSplit.activeModes.cycling.split, 1)}%`, `${formatNumber(modalSplit.activeModes.cycling.distance, 1)} km`],
+        ['Walking', `${formatNumber(modalSplit.activeModes.walking.split, 1)}%`, `${formatNumber(modalSplit.activeModes.walking.distance, 1)} km`],
+      ];
+
+      autoTable(doc, {
+        startY: currentY,
+        margin: { left: margin, right: margin },
+        head: [['Mode', 'Split (%)', 'Distance (km)']],
+        body: modalSplitRows,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [0, 94, 184], textColor: 255 },
+        alternateRowStyles: { fillColor: [245, 248, 255] },
+      });
+
+      // Shared mobility services section
+      const afterModalY = (doc as any).lastAutoTable?.finalY || startY;
+      currentY = afterModalY + 10;
+
+      // Check if we need a new page
+      if (currentY > 250) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'bold');
+      doc.text('Shared mobility services', margin, currentY);
+      currentY += 6;
+
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      const sharedModesRows = sharedModes.map((mode) => [
+        mode.mode,
+        formatNumber(mode.numVehicles, 0),
+        `${formatNumber(mode.percentageElectric, 1)}%`,
+      ]);
+
+      autoTable(doc, {
+        startY: currentY,
+        margin: { left: margin, right: margin },
+        head: [['Mode', 'Number of vehicles', 'Percentage electric']],
+        body: sharedModesRows,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [0, 94, 184], textColor: 255 },
+        alternateRowStyles: { fillColor: [245, 248, 255] },
+      });
+
       doc.save('emission-results.pdf');
     } catch (err) {
       console.error('PDF generation failed', err);
@@ -347,10 +428,51 @@ export default function DashboardPage() {
     }
   };
 
+  const handleReset = () => {
+    if (showResetConfirm) {
+      // User confirmed - reset everything
+      resetState();
+      setShowResetConfirm(false);
+      setError(null);
+      setResults(null);
+    } else {
+      // Show confirmation
+      setShowResetConfirm(true);
+    }
+  };
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-6 text-gray-900 dark:text-white">XIPE Dashboard</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">XIPE Dashboard</h1>
+          <div className="flex gap-2">
+            {showResetConfirm && (
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 dark:hover:bg-gray-700 active:bg-gray-700 dark:active:bg-gray-800 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md"
+                aria-label="Cancel reset"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:hover:bg-red-800 active:bg-red-800 dark:active:bg-red-900 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md"
+              aria-label={showResetConfirm ? "Confirm reset all fields" : "Reset all fields to default values"}
+            >
+              {showResetConfirm ? 'Confirm Reset' : 'Reset All'}
+            </button>
+          </div>
+        </div>
+        
+        {showResetConfirm && (
+          <Alert 
+            message="Are you sure you want to reset all fields? This will clear all inputs including country, city, modal split, shared modes, and any custom variables. This action cannot be undone."
+            type="warning"
+            onClose={() => setShowResetConfirm(false)}
+          />
+        )}
         
         <div className="mb-8">
           <p className="mb-4 text-gray-900 dark:text-gray-300">
