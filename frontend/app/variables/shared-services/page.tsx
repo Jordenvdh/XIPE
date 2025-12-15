@@ -13,13 +13,26 @@ import { saveSharedServiceVariables, getSharedServicesVariables } from '@/lib/ap
 import type { VariableRow } from '@/lib/types';
 
 export default function SharedServicesPage() {
-  const { sharedModes, modalSplit, variables } = useApp();
+  const { sharedModes, modalSplit, variables, updateVariables } = useApp();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const handleSave = async (service: string, variables: VariableRow[]) => {
+  const handleSave = async (service: string, rows: VariableRow[]) => {
     try {
-      await saveSharedServiceVariables(service, variables);
+      // Persist to backend (for this session) and to frontend context/localStorage
+      // so that saved values are:
+      // - used in the calculation request from the dashboard
+      // - shown again in the User Input column after navigation/refresh.
+      await saveSharedServiceVariables(service, rows);
+
+      // Merge this service into the sharedServices part of the global variables
+      updateVariables({
+        sharedServices: {
+          ...(variables.sharedServices || {}),
+          [service]: rows,
+        },
+      });
+
       setSaveMessage(`${service} variables saved successfully!`);
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (error) {
