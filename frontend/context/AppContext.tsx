@@ -119,7 +119,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateVariables = useCallback((variables: Partial<AllVariables>) => {
     setState((prev) => ({
       ...prev,
-      variables: { ...prev.variables, ...variables },
+      variables: {
+        ...prev.variables,
+        ...variables,
+        // Deep merge traditionalModes and sharedServices to preserve existing values
+        traditionalModes: variables.traditionalModes
+          ? { ...prev.variables.traditionalModes, ...variables.traditionalModes }
+          : prev.variables.traditionalModes,
+        sharedServices: variables.sharedServices
+          ? { ...prev.variables.sharedServices, ...variables.sharedServices }
+          : prev.variables.sharedServices,
+      },
     }));
   }, []);
 

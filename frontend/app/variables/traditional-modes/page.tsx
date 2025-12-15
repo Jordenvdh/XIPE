@@ -279,13 +279,10 @@ export default function TraditionalModesPage() {
     try {
       await saveTraditionalModeVariables('private_car', variables);
       setPrivateCarVars(variables);
-      // Use current local state values to ensure we preserve all modes
+      // Update context - deep merge will preserve other modes
       updateVariables({ 
         traditionalModes: { 
           private_car: variables,
-          pt_road: ptRoadVars,
-          pt_rail: ptRailVars,
-          active_transport: activeTransportVars,
         } 
       });
       setSaveMessage('Private Car variables saved successfully!');
@@ -299,13 +296,10 @@ export default function TraditionalModesPage() {
     try {
       await saveTraditionalModeVariables('pt_road', variables);
       setPtRoadVars(variables);
-      // Use current local state values to ensure we preserve all modes
+      // Update context - deep merge will preserve other modes
       updateVariables({ 
         traditionalModes: { 
-          private_car: privateCarVars,
           pt_road: variables,
-          pt_rail: ptRailVars,
-          active_transport: activeTransportVars,
         } 
       });
       setSaveMessage('Public Transport Road variables saved successfully!');
@@ -319,13 +313,10 @@ export default function TraditionalModesPage() {
     try {
       await saveTraditionalModeVariables('pt_rail', variables);
       setPtRailVars(variables);
-      // Use current local state values to ensure we preserve all modes
+      // Update context - deep merge will preserve other modes
       updateVariables({ 
         traditionalModes: { 
-          private_car: privateCarVars,
-          pt_road: ptRoadVars,
           pt_rail: variables,
-          active_transport: activeTransportVars,
         } 
       });
       setSaveMessage('Public Transport Rail variables saved successfully!');
@@ -339,12 +330,9 @@ export default function TraditionalModesPage() {
     try {
       await saveTraditionalModeVariables('active_transport', variables);
       setActiveTransportVars(variables);
-      // Use current local state values to ensure we preserve all modes
+      // Update context - deep merge will preserve other modes
       updateVariables({ 
         traditionalModes: { 
-          private_car: privateCarVars,
-          pt_road: ptRoadVars,
-          pt_rail: ptRailVars,
           active_transport: variables,
         } 
       });
@@ -409,12 +397,10 @@ export default function TraditionalModesPage() {
           onChange={(rows) => {
             setPrivateCarVars(rows);
             // Update context immediately so edits persist even before clicking Save
+            // Use functional update to ensure we get the latest state
             updateVariables({ 
               traditionalModes: { 
                 private_car: rows,
-                pt_road: ptRoadVars,
-                pt_rail: ptRailVars,
-                active_transport: activeTransportVars,
               } 
             });
           }}
@@ -430,10 +416,7 @@ export default function TraditionalModesPage() {
             // Update context immediately so edits persist even before clicking Save
             updateVariables({ 
               traditionalModes: { 
-                private_car: privateCarVars,
                 pt_road: rows,
-                pt_rail: ptRailVars,
-                active_transport: activeTransportVars,
               } 
             });
           }}
@@ -449,10 +432,7 @@ export default function TraditionalModesPage() {
             // Update context immediately so edits persist even before clicking Save
             updateVariables({ 
               traditionalModes: { 
-                private_car: privateCarVars,
-                pt_road: ptRoadVars,
                 pt_rail: rows,
-                active_transport: activeTransportVars,
               } 
             });
           }}
@@ -468,9 +448,6 @@ export default function TraditionalModesPage() {
             // Update context immediately so edits persist even before clicking Save
             updateVariables({ 
               traditionalModes: { 
-                private_car: privateCarVars,
-                pt_road: ptRoadVars,
-                pt_rail: ptRailVars,
                 active_transport: rows,
               } 
             });

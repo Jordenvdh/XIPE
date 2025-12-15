@@ -66,8 +66,17 @@ async def get_traditional_modes_variables():
     Returns:
         All traditional modes variables
     """
-    # Return defaults if not set
-    # This would normally load from storage or database
+    # Return saved values from storage if they exist, otherwise return empty arrays
+    if "traditionalModes" in _variables_storage:
+        stored = _variables_storage["traditionalModes"]
+        return TraditionalModesVariables(
+            privateCar=[VariableRow(**v) for v in stored.get("private_car", [])],
+            ptRoad=[VariableRow(**v) for v in stored.get("pt_road", [])],
+            ptRail=[VariableRow(**v) for v in stored.get("pt_rail", [])],
+            activeTransport=[VariableRow(**v) for v in stored.get("active_transport", [])]
+        )
+    
+    # Return empty arrays if nothing is saved
     return TraditionalModesVariables(
         privateCar=[],
         ptRoad=[],
