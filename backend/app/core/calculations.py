@@ -406,29 +406,45 @@ def _prepare_general_variables(
     fuel_dist: Dict[str, float]
 ) -> pd.DataFrame:
     """
-    Prepare general variables dataframe
+    Prepare general variables dataframe.
+    
+    Important:
+    - First align *default* values with country-specific data coming from the
+      data loader (electricity CO2 intensity, car fleet age and fuel mix).
+    - Then fill user inputs: wherever the user did not provide an input
+      (userInput == 0), we fall back to these country-specific defaults.
+    
+    This order ensures that:
+    - When the dashboard country changes, calculations use the correct
+      country-specific defaults (instead of the original NL-style values).
+    - If the user overrides a value on the Variables page, that override
+      is respected and passed through unchanged.
     """
+    # Start from the raw table sent by the API layer
     df_var_gen = pd.DataFrame(general_vars)
     df_var_gen["variable"] = df_var_gen["variable"].str.strip()
-    
-    # Use defaults if user input is zero
-    df_var_gen["userInput"] = np.where(
-        df_var_gen["userInput"] == 0, df_var_gen["defaultValue"], df_var_gen["userInput"]
-    )
-    
-    # Update defaults based on country
+
+    # 1) Update defaults based on the selected country and derived car age/fuel mix.
+    #    We intentionally do this *before* filling userInput, so that empty
+    #    user inputs inherit the correct country-specific defaults.
     df_var_gen.at[0, "defaultValue"] = country_data["electricityCo2"]
     df_var_gen.at[2, "defaultValue"] = car_age
     df_var_gen.at[3, "defaultValue"] = fuel_dist["petrol"]
     df_var_gen.at[4, "defaultValue"] = fuel_dist["diesel"]
     df_var_gen.at[5, "defaultValue"] = fuel_dist["ev"]
-    
+
+    # 2) Use defaults where the user did not provide an input
+    df_var_gen["userInput"] = np.where(
+        df_var_gen["userInput"] == 0, df_var_gen["defaultValue"], df_var_gen["userInput"]
+    )
+
+    # 3) Drop helper column and rename for downstream calculations
     df_var_gen = df_var_gen.drop(columns=["defaultValue"])
     df_var_gen = df_var_gen.rename(columns={"userInput": "general"})
-    
-    # Convert numeric column to numeric type
+
+    # 4) Ensure numeric type for the calculation engine
     df_var_gen["general"] = pd.to_numeric(df_var_gen["general"], errors='coerce').fillna(0)
-    
+
     return df_var_gen
 
 

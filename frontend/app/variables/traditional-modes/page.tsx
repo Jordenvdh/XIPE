@@ -13,7 +13,8 @@ import {
   getGeneralVariables, 
   saveGeneralVariables,
   getTraditionalModesVariables,
-  saveTraditionalModeVariables 
+  saveTraditionalModeVariables,
+  getPrivateCarDefaults,
 } from '@/lib/api/variables';
 import { getCountryData } from '@/lib/api/data';
 import type { VariableRow } from '@/lib/types';
@@ -88,10 +89,11 @@ export default function TraditionalModesPage() {
     loadVariables();
   }, []);
 
-  // Update general variables when country changes
+  // Update general variables (and private car defaults) when country changes
   useEffect(() => {
     if (dashboard.country && !loading) {
       loadCountrySpecificDefaults(dashboard.country);
+      loadPrivateCarDefaults(dashboard.country);
     }
   }, [dashboard.country, loading]);
 
@@ -103,8 +105,8 @@ export default function TraditionalModesPage() {
   }, [generalVars, loading, updateVariables]);
 
   /**
-   * Load country-specific default values and update general variables
-   * This ensures variables reflect the selected country's data
+   * Load country-specific default values and update general variables.
+   * This ensures variables reflect the selected country's data.
    */
   const loadCountrySpecificDefaults = async (country: string) => {
     try {
@@ -139,6 +141,44 @@ export default function TraditionalModesPage() {
     } catch (error) {
       console.error('Error loading country-specific defaults:', error);
       // Don't show error to user, just log it
+    }
+  };
+
+  /**
+   * Load country-specific default values for the private car mode.
+   * Uses a backend helper that applies the same WLTP/NEDC corrections
+   * and fuel‑mix based NOx/PM as the main calculation engine.
+   *
+   * Only the default values are updated – any user inputs in the table
+   * are preserved so manual overrides continue to work.
+   */
+  const loadPrivateCarDefaults = async (country: string) => {
+    try {
+      const backendDefaults = await getPrivateCarDefaults(country);
+
+      setPrivateCarVars((currentVars) => {
+        // Map backend rows by variable name for easy lookup
+        const backendByVariable = new Map(
+          backendDefaults.map((row) => [row.variable, row.defaultValue])
+        );
+
+        const updated = currentVars.map((row) => {
+          if (!backendByVariable.has(row.variable)) {
+            return row;
+          }
+
+          return {
+            ...row,
+            // Replace only the defaultValue; keep any userInput as-is
+            defaultValue: backendByVariable.get(row.variable) ?? row.defaultValue,
+          };
+        });
+
+        return updated;
+      });
+    } catch (error) {
+      // Silently ignore – if this fails, we keep the existing defaults.
+      console.error('Error loading private car defaults from backend:', error);
     }
   };
 

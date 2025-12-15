@@ -262,20 +262,35 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
             ],
         }
         
+        # Map frontend shared service keys (used on the Variables → Shared Modes page)
+        # to the internal var_nms_* keys expected by the calculation engine.
+        shared_services_key_map = {
+            "ice_car": "var_nms_ICEcar",
+            "ice_moped": "var_nms_ICEmoped",
+            "bike": "var_nms_bike",
+            "e_car": "var_nms_ev",
+            "e_bike": "var_nms_ebike",
+            "e_moped": "var_nms_emoped",
+            "e_scooter": "var_nms_escooter",
+            "other": "var_nms_other",
+            "e_other": "var_nms_eother",
+        }
+
         # Process shared services
-        shared_services_dict = {}
+        shared_services_dict: Dict[str, list] = {}
         if not request.variables.sharedServices or len(request.variables.sharedServices) == 0:
             # Use defaults for all shared service types
             shared_services_dict = default_shared_services.copy()
         else:
-            # Use provided values, but fill in missing ones with defaults
-            for key, vars_list in request.variables.sharedServices.items():
-                shared_services_dict[key] = [v.dict() for v in vars_list]
+            # Use provided values (mapped to var_nms_* keys), and fill in missing ones with defaults
+            for frontend_key, vars_list in request.variables.sharedServices.items():
+                backend_key = shared_services_key_map.get(frontend_key, frontend_key)
+                shared_services_dict[backend_key] = [v.dict() for v in vars_list]
             
             # Fill in any missing shared service types with defaults
-            for service_key in default_shared_services.keys():
+            for service_key, default_rows in default_shared_services.items():
                 if service_key not in shared_services_dict:
-                    shared_services_dict[service_key] = default_shared_services[service_key]
+                    shared_services_dict[service_key] = default_rows
         
         variables_dict = {
             "general": [v.dict() for v in request.variables.general],

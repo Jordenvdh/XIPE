@@ -28,6 +28,36 @@ export default function DataTable({
   const [editedVariables, setEditedVariables] = useState<VariableRow[]>(variables);
   const [isSaving, setIsSaving] = useState(false);
 
+  /**
+   * Format default values so that:
+   * - Large numbers show at most one decimal, with trailing ".0" trimmed
+   *   (e.g. 20.0 → "20", 20.3 → "20.3").
+   * - Small numbers are shown with enough significant digits to reveal
+   *   the first non‑zero decimal (e.g. 0.03 → "0.03", 0.003 → "0.003").
+   * This avoids rounding very efficient electric values (such as 0.03 kWh/km)
+   * down to "0.0" in the UI while keeping the underlying numeric value intact.
+   */
+  const formatDefaultValue = (value: number): string => {
+    if (!Number.isFinite(value)) return '';
+    if (value === 0) return '0';
+
+    const abs = Math.abs(value);
+
+    // For small magnitudes, use significant digits and trim trailing zeros.
+    if (abs < 1) {
+      const raw = value.toPrecision(3); // e.g. 0.00312 -> "0.00312"
+      // Avoid scientific notation if it appears for extremely small values.
+      if (raw.includes('e') || raw.includes('E')) {
+        return value.toString();
+      }
+      return raw.replace(/(?:\.0+|(\.\d*?[1-9]))0*$/, '$1');
+    }
+
+    // For >= 1, show one decimal and strip a trailing ".0".
+    const raw = value.toFixed(1); // e.g. 20.0 -> "20.0", 20.3 -> "20.3"
+    return raw.replace(/\.0$/, '');
+  };
+
   // Keep local state in sync when parent-provided variables change
   useEffect(() => {
     setEditedVariables(variables);
@@ -87,7 +117,7 @@ export default function DataTable({
                   />
                 </td>
                 <td className="p-3 text-gray-800 dark:text-gray-400">
-                  {variable.defaultValue.toFixed(1)}
+                  {formatDefaultValue(variable.defaultValue)}
                 </td>
               </tr>
             ))}

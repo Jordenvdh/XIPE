@@ -146,7 +146,13 @@ class DataLoader:
             self.car_acea["country"] == country, "perc_ev"
         ].values[0]
         
-        perc_other = 1 - perc_petrol - perc_diesel - perc_ev
+        # Compute residual "other" share. Due to source rounding/updates some
+        # countries (e.g. Denmark) can end up with a slightly negative value
+        # when petrol + diesel + EV exceed 1.0 by a small margin.
+        # Clamp at zero to satisfy Pydantic's >= 0 constraint and avoid
+        # spurious validation errors while preserving the main fuel shares.
+        perc_other_raw = 1 - perc_petrol - perc_diesel - perc_ev
+        perc_other = max(0.0, perc_other_raw)
         
         # Get electricity CO2 intensity
         elec_co2 = self.elec_co2_country.loc[0, country]

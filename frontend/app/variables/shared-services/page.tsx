@@ -28,14 +28,68 @@ export default function SharedServicesPage() {
   };
 
   /**
-   * Helper function to update default values based on modal split from dashboard
-   * This ensures "Replaces X by (%)" and "Average trip distance when replacing X" 
-   * use the values from the dashboard modal split
+   * Helper function to update default values based on modal split from dashboard.
+   *
+   * Percentages ("Replaces X by (%)") always follow the modal split values.
+   *
+   * For trip distances, we mirror the original XIPE logic used in the backend:
+   * - Most shared modes use the distance of the mode they replace (car / PT / bike / walk).
+   * - Shared bike:
+   *     - When replacing car / PT road / PT rail / cycling → cycling distance
+   *     - When replacing walking → walking distance
+   * - Shared e-bike:
+   *     - When replacing car / PT road / PT rail → 1.5 × cycling distance
+   *     - When replacing cycling → cycling distance
+   *     - When replacing walking → walking distance
+   * - Shared e-scooter:
+   *     - When replacing car / PT road / PT rail / cycling → cycling distance
+   *     - When replacing walking → walking distance
+   *
+   * This way the values shown in the Variables tables match the distances
+   * actually used in the calculation engine.
    */
-  const updateDefaultsWithModalSplit = (baseVars: VariableRow[]): VariableRow[] => {
+  const updateDefaultsWithModalSplit = (baseVars: VariableRow[], serviceType: string): VariableRow[] => {
+    // Base modal split distances
+    const distCarBase = modalSplit.privateCar.distance;
+    const distRoadBase = modalSplit.publicTransport.road.distance;
+    const distRailBase = modalSplit.publicTransport.rail.distance;
+    const distCycBase = modalSplit.activeModes.cycling.distance;
+    const distWalkBase = modalSplit.activeModes.walking.distance;
+
+    // Adjusted distances per service, following backend default_inputs_map
+    let distCar = distCarBase;
+    let distRoad = distRoadBase;
+    let distRail = distRailBase;
+    let distCyc = distCycBase;
+    let distWalk = distWalkBase;
+
+    if (serviceType === 'bike') {
+      // Bike: all motorised replacements use the bike (cycling) distance
+      distCar = distCycBase;
+      distRoad = distCycBase;
+      distRail = distCycBase;
+      distCyc = distCycBase;
+      distWalk = distWalkBase;
+    } else if (serviceType === 'e_bike') {
+      // e-Bike: 1.5x cycling distance for car/PT replacements, cycling for cycling, walking for walking
+      const scaled = distCycBase * 1.5;
+      distCar = scaled;
+      distRoad = scaled;
+      distRail = scaled;
+      distCyc = distCycBase;
+      distWalk = distWalkBase;
+    } else if (serviceType === 'e_scooter') {
+      // e-Scooter: use cycling distance for all but walking
+      distCar = distCycBase;
+      distRoad = distCycBase;
+      distRail = distCycBase;
+      distCyc = distCycBase;
+      distWalk = distWalkBase;
+    }
+
     return baseVars.map((varRow) => {
       let newDefault = varRow.defaultValue;
-      
+
       // Map modal split percentages to "Replaces X by (%)" variables
       if (varRow.variable === 'Replaces private car by (%)') {
         newDefault = modalSplit.privateCar.split;
@@ -48,19 +102,20 @@ export default function SharedServicesPage() {
       } else if (varRow.variable === 'Replaces walking by (%)') {
         newDefault = modalSplit.activeModes.walking.split;
       }
-      // Map modal split distances to "Average trip distance when replacing X" variables
+      // Map modal split distances (with caps/scaling per service) to
+      // "Average trip distance when replacing X" variables.
       else if (varRow.variable === 'Average trip distance of the shared mode when replacing car (km)') {
-        newDefault = modalSplit.privateCar.distance;
+        newDefault = distCar;
       } else if (varRow.variable === 'Average trip distance of the shared mode when replacing PT road (km)') {
-        newDefault = modalSplit.publicTransport.road.distance;
+        newDefault = distRoad;
       } else if (varRow.variable === 'Average trip distance of the shared mode when replacing PT rail (km)') {
-        newDefault = modalSplit.publicTransport.rail.distance;
+        newDefault = distRail;
       } else if (varRow.variable === 'Average trip distance of the shared mode when replacing cycling (km)') {
-        newDefault = modalSplit.activeModes.cycling.distance;
+        newDefault = distCyc;
       } else if (varRow.variable === 'Average trip distance of the shared mode when replacing walking (km)') {
-        newDefault = modalSplit.activeModes.walking.distance;
+        newDefault = distWalk;
       }
-      
+
       return { ...varRow, defaultValue: newDefault };
     });
   };
@@ -176,6 +231,43 @@ export default function SharedServicesPage() {
         { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
         { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
       ],
+      // Shared "other" ICE: all emission/usage defaults zero by design.
+      // Only the "replaces X by (%)" and "average trip distance when replacing X"
+      // fields will be filled from the dashboard modal split via updateDefaultsWithModalSplit.
+      other: [
+        { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average Tank-to-Wheel CO2 emissions (g/km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average NOx emissions (mg/km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average PM emissions (mg/km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+      ],
+      // Shared "other" electric: same pattern as above, using electric vehicle
+      // efficiency but with a default of zero so the user provides a value.
+      e_other: [
+        { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average efficiency of the electric vehicle (kWh/km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+        { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+      ],
     };
 
     return defaults[serviceType] || [];
@@ -210,7 +302,7 @@ export default function SharedServicesPage() {
     const varsToUse = savedVars && savedVars.length > 0 ? savedVars : baseVars;
     
     // Update defaults with modal split values (preserving user inputs if any)
-    return updateDefaultsWithModalSplit(varsToUse);
+    return updateDefaultsWithModalSplit(varsToUse, serviceType);
   };
 
   // Memoize variables for each service type to avoid recalculating on every render
@@ -221,6 +313,8 @@ export default function SharedServicesPage() {
   const eBikeVars = useMemo(() => getDefaultVariables('e_bike'), [modalSplit, variables.sharedServices]);
   const eMopedVars = useMemo(() => getDefaultVariables('e_moped'), [modalSplit, variables.sharedServices]);
   const eScooterVars = useMemo(() => getDefaultVariables('e_scooter'), [modalSplit, variables.sharedServices]);
+  const otherVars = useMemo(() => getDefaultVariables('other'), [modalSplit, variables.sharedServices]);
+  const eOtherVars = useMemo(() => getDefaultVariables('e_other'), [modalSplit, variables.sharedServices]);
 
   const otherModeName = sharedModes.find(m => m.mode === 'Other')?.mode || 'Other';
 
@@ -312,14 +406,14 @@ export default function SharedServicesPage() {
           </p>
         </div>
         <DataTable
-          variables={iceCarVars}
+          variables={otherVars}
           onSave={(vars) => handleSave('other', vars)}
           title={`Shared ${otherModeName}`}
         />
 
         {/* Shared e-Other */}
         <DataTable
-          variables={eCarVars}
+          variables={eOtherVars}
           onSave={(vars) => handleSave('e_other', vars)}
           title={`Shared e-${otherModeName}`}
         />

@@ -33,6 +33,21 @@ export async function getTraditionalModesVariables(): Promise<TraditionalModesVa
 }
 
 /**
+ * Get country-specific default variables for the private car mode.
+ *
+ * This uses the same backend datasets and correction factors as the
+ * main calculation engine (CO2, NOx, PM based on fleet age and fuel mix),
+ * so the visible defaults on the Variables page match what is used
+ * internally for the calculations.
+ */
+export async function getPrivateCarDefaults(country: string): Promise<VariableRow[]> {
+  const response = await apiClient.get<VariableRow[]>('/api/variables/traditional-modes/private-car-defaults', {
+    params: { country },
+  });
+  return response.data;
+}
+
+/**
  * Save traditional mode variables
  */
 export async function saveTraditionalModeVariables(
@@ -59,5 +74,6 @@ export async function saveSharedServiceVariables(
 ): Promise<void> {
   await apiClient.post(`/api/variables/shared-services/${service}`, variables);
 }
+
 
 
