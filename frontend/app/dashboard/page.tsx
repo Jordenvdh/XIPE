@@ -334,7 +334,7 @@ export default function DashboardPage() {
       }
 
       doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('Shared mobility services', margin, currentY);
       currentY += 6;
 
