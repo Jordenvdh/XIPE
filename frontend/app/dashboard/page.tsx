@@ -288,23 +288,23 @@ export default function DashboardPage() {
       }
 
       doc.setFontSize(14);
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('Input values', margin, currentY);
       currentY += 8;
 
       doc.setFontSize(11);
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       doc.text(`Number of inhabitants: ${formatNumber(dashboard.inhabitants, 0)}`, margin, currentY);
       currentY += 6;
 
       // Modal split section
       doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('Modal split', margin, currentY);
       currentY += 6;
 
       doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       const modalSplitRows = [
         ['Private Car', `${formatNumber(modalSplit.privateCar.split, 1)}%`, `${formatNumber(modalSplit.privateCar.distance, 1)} km`],
         ['PT Road', `${formatNumber(modalSplit.publicTransport.road.split, 1)}%`, `${formatNumber(modalSplit.publicTransport.road.distance, 1)} km`],
@@ -339,7 +339,7 @@ export default function DashboardPage() {
       currentY += 6;
 
       doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       const sharedModesRows = sharedModes.map((mode) => [
         mode.mode,
         formatNumber(mode.numVehicles, 0),
