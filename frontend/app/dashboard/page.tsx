@@ -670,8 +670,8 @@ export default function DashboardPage() {
 
       // Prepare calculation request
       const request = {
-        country: dashboard.country,
-        cityName: dashboard.cityName,
+        country: dashboard.country || '',
+        cityName: dashboard.cityName || '',  // Allow empty city name
         inhabitants: dashboard.inhabitants,
         modalSplit: {
           privateCar: modalSplit.privateCar,
@@ -692,7 +692,23 @@ export default function DashboardPage() {
       setResults(calculatedResults);
     } catch (err: any) {
       console.error('Calculation error:', err);
-      setError(err.response?.data?.detail || 'Failed to calculate emissions');
+      // Extract detailed error message from response
+      let errorMessage = 'Failed to calculate emissions';
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (errorData.detail) {
+          // Handle Pydantic validation errors (422)
+          if (Array.isArray(errorData.detail)) {
+            const validationErrors = errorData.detail.map((e: any) => 
+              `${e.loc?.join('.')}: ${e.msg}`
+            ).join('; ');
+            errorMessage = `Validation error: ${validationErrors}`;
+          } else {
+            errorMessage = errorData.detail;
+          }
+        }
+      }
+      setError(errorMessage);
     } finally {
       setIsCalculating(false);
     }

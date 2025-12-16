@@ -128,24 +128,48 @@ class CalculationRequest(BaseModel):
     - Numeric values validated for ranges
     """
     country: str = Field(..., min_length=1, max_length=100)
-    cityName: str = Field(..., min_length=1, max_length=200)
+    cityName: str = Field(default="", max_length=200)  # Allow empty city name
     inhabitants: int = Field(..., gt=0, le=100000000)  # Max 100 million
     modalSplit: ModalSplit
     sharedModes: List[SharedMode]
     variables: AllVariables
     
-    @field_validator('country', 'cityName')
+    @field_validator('country')
     @classmethod
-    def validate_names(cls, v: str) -> str:
+    def validate_country(cls, v: str) -> str:
         """
-        Validate country and city names
+        Validate country name
         
         OWASP #1 - Injection Prevention: Only allow safe characters
-        Prevents injection attacks while allowing legitimate names
+        Prevents injection attacks while allowing legitimate country names
         """
-        # Allow alphanumeric, spaces, hyphens, apostrophes, and common punctuation
-        if not re.match(r"^[a-zA-Z0-9\s\-'.,()]+$", v):
-            raise ValueError("Invalid characters in name")
+        v = v.strip()
+        if not v:
+            raise ValueError("Country name cannot be empty")
+        
+        # Allow alphanumeric, spaces, hyphens, apostrophes, accented characters, and common punctuation
+        # More permissive regex to handle international country names with accents
+        if not re.match(r"^[a-zA-Z0-9\s\-'.,()àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸ]+$", v):
+            raise ValueError("Invalid characters in country name")
+        return v
+    
+    @field_validator('cityName')
+    @classmethod
+    def validate_city_name(cls, v: str) -> str:
+        """
+        Validate city name (optional)
+        
+        OWASP #1 - Injection Prevention: Only allow safe characters
+        Prevents injection attacks while allowing legitimate city names
+        """
+        # Allow empty string for cityName (it's optional)
+        if not v or not v.strip():
+            return ""
+        
+        # Allow alphanumeric, spaces, hyphens, apostrophes, accented characters, and common punctuation
+        # More permissive regex to handle international city names with accents
+        if not re.match(r"^[a-zA-Z0-9\s\-'.,()àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸ]+$", v):
+            raise ValueError("Invalid characters in city name")
         return v.strip()
 
 
