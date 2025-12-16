@@ -2,6 +2,11 @@
 
 /**
  * Text Input Component
+ * 
+ * Security considerations:
+ * - OWASP #7 - XSS: React automatically escapes all rendered content
+ * - Controlled input: value is bound, preventing injection
+ * - Label and placeholder are safely escaped by React
  */
 interface TextInputProps {
   value: string;
@@ -20,7 +25,10 @@ export default function TextInput({
 }: TextInputProps) {
   return (
     <div className="mb-4">
+      {/* OWASP #7 - XSS: React automatically escapes label text */}
       <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">{label}</label>
+      {/* OWASP #7 - XSS: Controlled input prevents XSS, React escapes value */}
+      {/* OWASP #1 - Injection Prevention: Input is controlled, server validates */}
       <input
         type="text"
         value={value}

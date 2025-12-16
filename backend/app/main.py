@@ -1,9 +1,23 @@
 """
 XIPE Backend API
 FastAPI application for XIPE emission calculations
+
+Security considerations:
+- CORS: Configured to allow only specified origins
+- Error handling: Generic error messages to prevent information disclosure
+- Logging: Security events are logged
+- Production: Consider adding rate limiting, authentication, and HTTPS enforcement
 """
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Configure logging for security events
+# OWASP #10 - Logging: Set up comprehensive logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # Support both local backend execution (cwd=backend) and Vercel serverless (cwd=repo root)
 try:
@@ -28,12 +42,14 @@ app = FastAPI(
 )
 
 # CORS configuration - allow Next.js frontend
+# OWASP #6 - Security Misconfiguration: Restrict CORS to known origins
+# OWASP #5 - Broken Access Control: CORS prevents unauthorized cross-origin requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.CORS_ORIGINS,  # Only allow configured origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],  # Restrict to needed methods only
+    allow_headers=["Content-Type", "Authorization"],  # Restrict headers
 )
 
 # Include API routes
@@ -62,6 +78,7 @@ async def health_check():
 async def api_health_check():
     """Health check endpoint under /api for serverless rewrite"""
     return {"status": "healthy"}
+
 
 
 

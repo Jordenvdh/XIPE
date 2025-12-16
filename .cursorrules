@@ -1,0 +1,118 @@
+# Cursor Rules for XIPE
+
+## Documentation Management
+
+**CRITICAL: All documentation files must be created in the `docs/` folder**
+
+- When creating any `.md` documentation file, ALWAYS create it in `docs/` folder
+- The `docs/` folder is gitignored to prevent API key exposure
+- Only `README.md` in the root should be tracked in git
+- Documentation files may contain:
+  - API keys (for reference)
+  - Setup instructions
+  - Configuration examples
+  - Troubleshooting guides
+  - Security audit reports
+
+**Rule:** Never create documentation files in the root directory. Always use `docs/` folder.
+
+## Temporary Scripts Management
+
+**CRITICAL: All temporary scripts must be created in the `scripts/` folder**
+
+- When creating any temporary script (Python, shell, Node.js, etc.), ALWAYS create it in `scripts/` folder
+- The `scripts/` folder is gitignored to prevent temporary code from being committed
+- Temporary scripts may include:
+  - One-off data processing scripts
+  - Migration scripts
+  - Testing/debugging scripts
+  - Utility scripts for development
+
+**Rule:** Never create temporary scripts in the root directory or source code folders. Always use `scripts/` folder.
+
+## Security Best Practices
+
+- Never hardcode API keys in source code
+- Always use environment variables
+- Fail-secure authentication (require tokens, no fallbacks)
+- Documentation with sensitive info goes in `docs/` folder only
+
+## OWASP Top 10 Security Practices
+
+### 1. Injection Prevention
+- Use parameterized queries and prepared statements
+- Separate code from data
+- Validate and sanitize all user inputs
+- Use ORM frameworks that handle parameterization automatically
+
+### 2. Broken Authentication
+- Implement strong authentication mechanisms
+- Use multi-factor authentication (MFA) where possible
+- Ensure secure session management
+- Prevent unauthorized access through proper token validation
+- Use secure password hashing (bcrypt, Argon2)
+- Implement account lockout mechanisms
+
+### 3. Sensitive Data Exposure
+- Encrypt sensitive data both in transit (TLS/SSL) and at rest
+- Avoid storing unnecessary sensitive information
+- Use strong encryption algorithms
+- Never log sensitive data (passwords, tokens, credit cards)
+- Implement proper key management
+
+### 4. XML External Entities (XXE)
+- Disable external entity processing in XML parsers
+- Use simpler data formats (JSON) when possible
+- Validate XML input against schemas
+- Patch XML processors regularly
+
+### 5. Broken Access Control
+- Enforce strict access controls
+- Implement principle of least privilege
+- Verify authorization for every request
+- Don't rely on client-side access control alone
+- Validate user permissions server-side
+
+### 6. Security Misconfiguration
+- Regularly review and update configurations
+- Disable unnecessary features and services
+- Apply security patches promptly
+- Use secure default configurations
+- Remove default accounts and passwords
+- Disable debug modes in production
+
+### 7. Cross-Site Scripting (XSS)
+- Sanitize and encode user input before rendering
+- Use Content Security Policy (CSP) headers
+- Validate and escape output
+- Use framework's built-in XSS protection mechanisms
+- Avoid `innerHTML` and use `textContent` when possible
+
+### 8. Insecure Deserialization
+- Avoid deserializing data from untrusted sources
+- Implement integrity checks on serialized data
+- Use safe serialization formats (JSON instead of binary)
+- Validate deserialized data before use
+- Monitor deserialization exceptions
+
+### 9. Using Components with Known Vulnerabilities
+- Maintain an inventory of all components and their versions
+- Regularly update dependencies to address known vulnerabilities
+- Use dependency scanning tools
+- Subscribe to security advisories
+- Remove unused dependencies
+
+### 10. Insufficient Logging and Monitoring
+- Implement comprehensive logging and monitoring
+- Log security-relevant events (authentication failures, access denials)
+- Monitor for suspicious activities
+- Set up alerts for security incidents
+- Ensure logs are tamper-proof
+- Regularly review logs for anomalies
+
+## General Development Rules
+
+- Supabase does not work with - so use _
+- Do not change anything visible without permission
+- Comment the code per section to share what it's for and what it does. Good for later reference.
+- Do not add mock data unless asked

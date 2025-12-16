@@ -1,9 +1,20 @@
 """
 API routes for emissions calculations
+
+Security considerations:
+- Input validation: All inputs validated via Pydantic schemas
+- Error handling: Generic error messages to avoid information disclosure
+- Logging: Security-relevant events (calculations, errors) are logged
+- Rate limiting: Consider adding rate limiting for production
 """
+import logging
 from fastapi import APIRouter, HTTPException
 from app.api.models.schemas import CalculationRequest, CalculationResponse
 from app.core.calculations import calculate_emissions
+
+# Security logging setup
+# Log security-relevant events (calculations, errors, etc.)
+security_logger = logging.getLogger("security")
 
 router = APIRouter()
 
@@ -14,11 +25,23 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
     Calculate emissions based on input data
     
     Args:
-        request: Calculation request with all input data
+        request: Calculation request with all input data (validated via Pydantic)
         
     Returns:
         Calculation results with per-mode and total emissions
+        
+    Security:
+    - OWASP #1 - Injection Prevention: Input validated via Pydantic schemas
+    - OWASP #3 - Sensitive Data Exposure: Generic error messages
+    - OWASP #10 - Logging: Calculation requests and errors are logged
+    - Input validation: All numeric values validated (ranges, types)
     """
+    # OWASP #10 - Logging: Log calculation requests for monitoring
+    security_logger.info(
+        f"Calculation request received: country={request.country}, "
+        f"inhabitants={request.inhabitants}"
+    )
+    
     try:
         # Convert request to calculation function format
         modal_split_dict = {
@@ -299,6 +322,7 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
         }
         
         # Perform calculation
+        # OWASP #1 - Injection Prevention: All inputs validated before calculation
         results = calculate_emissions(
             country=request.country,
             inhabitants=request.inhabitants,
@@ -308,15 +332,38 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
         )
         
         # Format response
+        # OWASP #10 - Logging: Log successful calculations
+        security_logger.info(
+            f"Calculation completed successfully: country={request.country}"
+        )
+        
         return CalculationResponse(**results)
         
     except ValueError as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=400, detail=str(e))
+        # OWASP #3 - Sensitive Data Exposure: Don't expose full error details
+        # OWASP #10 - Logging: Log validation errors
+        security_logger.warning(
+            f"Calculation validation error: country={request.country}, "
+            f"error={str(e)[:100]}"
+        )
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid input data. Please check your input values."
+        )
     except Exception as e:
+        # OWASP #3 - Sensitive Data Exposure: Generic error message
+        # OWASP #10 - Logging: Log errors with limited detail
         import traceback
         error_traceback = traceback.format_exc()
-        print(f"Calculation error traceback:\n{error_traceback}")
-        raise HTTPException(status_code=500, detail=f"Calculation error: {str(e)}\n\nTraceback:\n{error_traceback}")
+        # Log full error internally for debugging
+        security_logger.error(
+            f"Calculation error: country={request.country}, "
+            f"error_type={type(e).__name__}, "
+            f"error_message={str(e)[:200]}"
+        )
+        # Return generic error to client
+        raise HTTPException(
+            status_code=500, 
+            detail="An error occurred during calculation. Please try again later."
+        )
 

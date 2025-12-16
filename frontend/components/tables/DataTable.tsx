@@ -3,6 +3,12 @@
 /**
  * Editable Data Table Component
  * Displays variables with editable "User Input" column and read-only "Default Value" column
+ * 
+ * Security considerations:
+ * - OWASP #7 - XSS: React automatically escapes all rendered content
+ * - User input is validated as numbers only (type="number")
+ * - No dangerouslySetInnerHTML or innerHTML used
+ * - All text content is safely escaped by React
  */
 import { useEffect, useState } from 'react';
 import type { VariableRow } from '@/lib/types';
@@ -126,12 +132,15 @@ export default function DataTable({
                 key={index} 
                 className="border-b border-gray-200 dark:border-gray-700 hover:bg-[var(--hover-bg)] transition-colors"
               >
+                {/* OWASP #7 - XSS: React automatically escapes variable.variable */}
                 <td className="p-3 text-gray-900 dark:text-white">{variable.variable}</td>
                 <td className="p-3">
+                  {/* OWASP #7 - XSS: type="number" restricts input to numeric values only */}
                   <input
                     type="number"
                     value={variable.userInput === 0 ? 0 : variable.userInput}
                     onChange={(e) => {
+                      // OWASP #1 - Injection Prevention: Parse and validate numeric input
                       const newValue = parseFloat(e.target.value) || 0;
                       handleInputChange(index, newValue);
                     }}
@@ -142,6 +151,7 @@ export default function DataTable({
                     aria-label={`User input for ${variable.variable}`}
                   />
                 </td>
+                {/* OWASP #7 - XSS: formatDefaultValue returns string, React escapes it */}
                 <td className="p-3 text-gray-800 dark:text-gray-400">
                   {formatDefaultValue(variable.defaultValue)}
                 </td>

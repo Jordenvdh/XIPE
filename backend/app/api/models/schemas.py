@@ -1,8 +1,19 @@
 """
 Pydantic models for request/response validation
+
+Purpose:
+- Define data structures for API requests and responses
+- Provide automatic input validation
+- Type safety and documentation
+
+Security considerations:
+- OWASP #1 - Injection Prevention: All inputs validated via Pydantic
+- Field validators ensure data ranges and formats are correct
+- Prevents invalid data from reaching business logic
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Optional, Any
+import re
 
 
 # Data Models
@@ -104,13 +115,38 @@ class AllVariables(BaseModel):
 
 # Calculation Request/Response Models
 class CalculationRequest(BaseModel):
-    """Request model for emissions calculation"""
-    country: str
-    cityName: str
-    inhabitants: int = Field(..., gt=0)
+    """
+    Request model for emissions calculation
+    
+    Purpose:
+    - Validates all input data for emissions calculations
+    - Ensures data integrity before processing
+    
+    Security:
+    - OWASP #1 - Injection Prevention: All fields validated
+    - Country and city names validated against patterns
+    - Numeric values validated for ranges
+    """
+    country: str = Field(..., min_length=1, max_length=100)
+    cityName: str = Field(..., min_length=1, max_length=200)
+    inhabitants: int = Field(..., gt=0, le=100000000)  # Max 100 million
     modalSplit: ModalSplit
     sharedModes: List[SharedMode]
     variables: AllVariables
+    
+    @field_validator('country', 'cityName')
+    @classmethod
+    def validate_names(cls, v: str) -> str:
+        """
+        Validate country and city names
+        
+        OWASP #1 - Injection Prevention: Only allow safe characters
+        Prevents injection attacks while allowing legitimate names
+        """
+        # Allow alphanumeric, spaces, hyphens, apostrophes, and common punctuation
+        if not re.match(r"^[a-zA-Z0-9\s\-'.,()]+$", v):
+            raise ValueError("Invalid characters in name")
+        return v.strip()
 
 
 class PerModeResult(BaseModel):
