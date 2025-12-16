@@ -356,7 +356,7 @@ export default function DashboardPage() {
         alternateRowStyles: { fillColor: [245, 248, 255] },
       });
 
-      // Traditional Modes Variables section
+      // General Variables section
       const afterSharedY = (doc as any).lastAutoTable?.finalY || startY;
       currentY = afterSharedY + 15;
 
@@ -368,13 +368,14 @@ export default function DashboardPage() {
 
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text('Traditional Modes Variables', margin, currentY);
+      doc.text('General Variables', margin, currentY);
       currentY += 8;
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
 
       // Helper function to format variable value (show userInput if non-zero, otherwise defaultValue)
+      // This matches the logic used in calculations: userInput !== 0 ? userInput : defaultValue
       const formatVarValue = (row: { userInput: number; defaultValue: number }): string => {
         const value = row.userInput !== 0 ? row.userInput : row.defaultValue;
         // Format small numbers properly (like 0.03)
@@ -383,6 +384,42 @@ export default function DashboardPage() {
         }
         return value.toFixed(1).replace(/\.0$/, '');
       };
+
+      // General Variables table
+      const generalVars = variables.general || [];
+      if (generalVars.length > 0) {
+        const generalRows = generalVars.map((row) => [
+          row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
+          formatVarValue(row),
+        ]);
+
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: margin, right: margin },
+          head: [['Variable', 'Value']],
+          body: generalRows,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [0, 94, 184], textColor: 255 },
+          alternateRowStyles: { fillColor: [245, 248, 255] },
+          columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60 } },
+        });
+        currentY = (doc as any).lastAutoTable?.finalY || currentY;
+        currentY += 10;
+      }
+
+      // Traditional Modes Variables section
+      if (currentY > 240) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Traditional Modes Variables', margin, currentY);
+      currentY += 8;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
 
       // Private Car variables
       const privateCarVars = variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar || [];
@@ -526,7 +563,7 @@ export default function DashboardPage() {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
 
-      // Map frontend keys to display names
+      // Map frontend keys to display names (all possible shared services)
       const sharedServiceNames: Record<string, string> = {
         ice_car: 'Shared ICE Car',
         ice_moped: 'Shared ICE Moped',
@@ -539,10 +576,16 @@ export default function DashboardPage() {
         e_other: 'Shared e-Other',
       };
 
-      // Add each shared service that has variables
-      if (variables.sharedServices) {
-        for (const [key, vars] of Object.entries(variables.sharedServices)) {
-          if (vars && vars.length > 0) {
+      // Print all shared services that exist in variables.sharedServices
+      // These are the services that were used in the calculation (either explicitly set or with defaults)
+      if (variables.sharedServices && Object.keys(variables.sharedServices).length > 0) {
+        // Sort keys for consistent ordering
+        const serviceKeys = Object.keys(variables.sharedServices).sort();
+        
+        for (const key of serviceKeys) {
+          const vars = variables.sharedServices[key];
+          // Print all services that have variables (even if empty, they were used in calculation)
+          if (vars && Array.isArray(vars) && vars.length > 0) {
             if (currentY > 240) {
               doc.addPage();
               currentY = 20;
@@ -575,6 +618,12 @@ export default function DashboardPage() {
             currentY += 5;
           }
         }
+      } else {
+        // If no shared services in variables, print a note
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'italic');
+        doc.text('No shared services variables available', margin, currentY);
+        currentY += 6;
       }
 
       doc.save('emission-results.pdf');
