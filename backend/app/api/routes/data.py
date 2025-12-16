@@ -94,3 +94,4 @@ async def get_electricity_intensity():
 
 
 
+

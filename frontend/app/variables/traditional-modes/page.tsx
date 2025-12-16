@@ -189,28 +189,83 @@ export default function TraditionalModesPage() {
         getTraditionalModesVariables(),
       ]);
 
+      // Helper to merge variables: prioritize non-zero userInput values from any source,
+      // then use defaults. This ensures latest edits are preserved.
+      // Important: userInput should be 0 when no override is provided (meaning default is used).
+      // If userInput equals defaultValue, normalize it to 0 unless it was explicitly set.
+      const mergeVariables = (
+        apiVars: VariableRow[],
+        contextVars: VariableRow[] | undefined,
+        defaults: VariableRow[]
+      ): VariableRow[] => {
+        const defaultMap = new Map(defaults.map((d) => [d.variable, d]));
+        const contextMap = contextVars ? new Map(contextVars.map((v) => [v.variable, v])) : null;
+        const apiMap = apiVars.length ? new Map(apiVars.map((v) => [v.variable, v])) : null;
+        
+        return defaults.map((defaultRow) => {
+          const contextRow = contextMap?.get(defaultRow.variable);
+          const apiRow = apiMap?.get(defaultRow.variable);
+          
+          // Prioritize: context userInput > api userInput > 0
+          // userInput of 0 means "use default", non-zero means "use this custom value"
+          let userInput = 0;
+          if (contextRow && contextRow.userInput !== 0) {
+            userInput = contextRow.userInput;
+          } else if (apiRow && apiRow.userInput !== 0) {
+            userInput = apiRow.userInput;
+          }
+          
+          // Use defaultValue from context (if exists) > api (if exists) > default
+          const defaultValue = contextRow?.defaultValue ?? apiRow?.defaultValue ?? defaultRow.defaultValue;
+          
+          return {
+            variable: defaultRow.variable,
+            userInput,
+            defaultValue,
+          };
+        });
+      };
+
       // Hydrate local and global state from API, falling back to context (saved values),
       // then to defaults when missing.
       // This ensures that user inputs saved in context/localStorage persist across
       // navigation and page refreshes.
-      const apiPrivateCar = traditional?.privateCar?.length 
-        ? traditional.privateCar 
-        : (variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar || defaultPrivateCarVars);
-      const apiPtRoad = traditional?.ptRoad?.length 
-        ? traditional.ptRoad 
-        : (variables.traditionalModes?.pt_road || variables.traditionalModes?.ptRoad || defaultPtRoadVars);
-      const apiPtRail = traditional?.ptRail?.length 
-        ? traditional.ptRail 
-        : (variables.traditionalModes?.pt_rail || variables.traditionalModes?.ptRail || defaultPtRailVars);
-      const apiActive = traditional?.activeTransport?.length 
-        ? traditional.activeTransport 
-        : (variables.traditionalModes?.active_transport || variables.traditionalModes?.activeTransport || defaultActiveTransportVars);
+      const contextPrivateCar = variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar;
+      const apiPrivateCar = mergeVariables(
+        traditional?.privateCar || [],
+        contextPrivateCar,
+        defaultPrivateCarVars
+      );
+      
+      const contextPtRoad = variables.traditionalModes?.pt_road || variables.traditionalModes?.ptRoad;
+      const apiPtRoad = mergeVariables(
+        traditional?.ptRoad || [],
+        contextPtRoad,
+        defaultPtRoadVars
+      );
+      
+      const contextPtRail = variables.traditionalModes?.pt_rail || variables.traditionalModes?.ptRail;
+      const apiPtRail = mergeVariables(
+        traditional?.ptRail || [],
+        contextPtRail,
+        defaultPtRailVars
+      );
+      
+      const contextActive = variables.traditionalModes?.active_transport || variables.traditionalModes?.activeTransport;
+      const apiActive = mergeVariables(
+        traditional?.activeTransport || [],
+        contextActive,
+        defaultActiveTransportVars
+      );
 
       // Start with API-loaded, then context (saved values), then defaults
       // This ensures user inputs persist across navigation/refresh
-      let initialGeneralVars = general.variables?.length 
-        ? general.variables 
-        : (variables.general?.length ? variables.general : defaultGeneralVars);
+      const contextGeneral = variables.general;
+      let initialGeneralVars = mergeVariables(
+        general.variables || [],
+        contextGeneral,
+        defaultGeneralVars
+      );
       
       // If country is selected, update defaults with country-specific data
       if (dashboard.country) {

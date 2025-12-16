@@ -356,6 +356,227 @@ export default function DashboardPage() {
         alternateRowStyles: { fillColor: [245, 248, 255] },
       });
 
+      // Traditional Modes Variables section
+      const afterSharedY = (doc as any).lastAutoTable?.finalY || startY;
+      currentY = afterSharedY + 15;
+
+      // Check if we need a new page
+      if (currentY > 250) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Traditional Modes Variables', margin, currentY);
+      currentY += 8;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+
+      // Helper function to format variable value (show userInput if non-zero, otherwise defaultValue)
+      const formatVarValue = (row: { userInput: number; defaultValue: number }): string => {
+        const value = row.userInput !== 0 ? row.userInput : row.defaultValue;
+        // Format small numbers properly (like 0.03)
+        if (Math.abs(value) < 1 && value !== 0) {
+          return value.toPrecision(3).replace(/(?:\.0+|(\.\d*?[1-9]))0*$/, '$1');
+        }
+        return value.toFixed(1).replace(/\.0$/, '');
+      };
+
+      // Private Car variables
+      const privateCarVars = variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar || [];
+      if (privateCarVars.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Private Car', margin, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+
+        const privateCarRows = privateCarVars.map((row) => [
+          row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
+          formatVarValue(row),
+        ]);
+
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: margin, right: margin },
+          head: [['Variable', 'Value']],
+          body: privateCarRows,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [0, 94, 184], textColor: 255 },
+          alternateRowStyles: { fillColor: [245, 248, 255] },
+          columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60 } },
+        });
+        currentY = (doc as any).lastAutoTable?.finalY || currentY;
+        currentY += 5;
+      }
+
+      // PT Road variables
+      const ptRoadVars = variables.traditionalModes?.pt_road || variables.traditionalModes?.ptRoad || [];
+      if (ptRoadVars.length > 0) {
+        if (currentY > 250) {
+          doc.addPage();
+          currentY = 20;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Public Transport Road', margin, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+
+        const ptRoadRows = ptRoadVars.map((row) => [
+          row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
+          formatVarValue(row),
+        ]);
+
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: margin, right: margin },
+          head: [['Variable', 'Value']],
+          body: ptRoadRows,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [0, 94, 184], textColor: 255 },
+          alternateRowStyles: { fillColor: [245, 248, 255] },
+          columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60 } },
+        });
+        currentY = (doc as any).lastAutoTable?.finalY || currentY;
+        currentY += 5;
+      }
+
+      // PT Rail variables
+      const ptRailVars = variables.traditionalModes?.pt_rail || variables.traditionalModes?.ptRail || [];
+      if (ptRailVars.length > 0) {
+        if (currentY > 250) {
+          doc.addPage();
+          currentY = 20;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Public Transport Rail', margin, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+
+        const ptRailRows = ptRailVars.map((row) => [
+          row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
+          formatVarValue(row),
+        ]);
+
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: margin, right: margin },
+          head: [['Variable', 'Value']],
+          body: ptRailRows,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [0, 94, 184], textColor: 255 },
+          alternateRowStyles: { fillColor: [245, 248, 255] },
+          columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60 } },
+        });
+        currentY = (doc as any).lastAutoTable?.finalY || currentY;
+        currentY += 5;
+      }
+
+      // Active Transport variables (cycling and walking)
+      const activeTransportVars = variables.traditionalModes?.active_transport || variables.traditionalModes?.activeTransport || [];
+      if (activeTransportVars.length > 0) {
+        if (currentY > 250) {
+          doc.addPage();
+          currentY = 20;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Active Transport', margin, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+
+        const activeTransportRows = activeTransportVars.map((row) => [
+          row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
+          formatVarValue(row),
+        ]);
+
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: margin, right: margin },
+          head: [['Variable', 'Value']],
+          body: activeTransportRows,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [0, 94, 184], textColor: 255 },
+          alternateRowStyles: { fillColor: [245, 248, 255] },
+          columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60 } },
+        });
+        currentY = (doc as any).lastAutoTable?.finalY || currentY;
+        currentY += 10;
+      }
+
+      // Shared Services Variables section
+      if (currentY > 240) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Shared Services Variables', margin, currentY);
+      currentY += 8;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+
+      // Map frontend keys to display names
+      const sharedServiceNames: Record<string, string> = {
+        ice_car: 'Shared ICE Car',
+        ice_moped: 'Shared ICE Moped',
+        bike: 'Shared Bike',
+        e_car: 'Shared e-Car',
+        e_bike: 'Shared e-Bike',
+        e_moped: 'Shared e-Moped',
+        e_scooter: 'Shared e-Scooter',
+        other: 'Shared Other',
+        e_other: 'Shared e-Other',
+      };
+
+      // Add each shared service that has variables
+      if (variables.sharedServices) {
+        for (const [key, vars] of Object.entries(variables.sharedServices)) {
+          if (vars && vars.length > 0) {
+            if (currentY > 240) {
+              doc.addPage();
+              currentY = 20;
+            }
+
+            const serviceName = sharedServiceNames[key] || key;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.text(serviceName, margin, currentY);
+            currentY += 6;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+
+            const serviceRows = vars.map((row) => [
+              row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
+              formatVarValue(row),
+            ]);
+
+            autoTable(doc, {
+              startY: currentY,
+              margin: { left: margin, right: margin },
+              head: [['Variable', 'Value']],
+              body: serviceRows,
+              styles: { fontSize: 8 },
+              headStyles: { fillColor: [0, 94, 184], textColor: 255 },
+              alternateRowStyles: { fillColor: [245, 248, 255] },
+              columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60 } },
+            });
+            currentY = (doc as any).lastAutoTable?.finalY || currentY;
+            currentY += 5;
+          }
+        }
+      }
+
       doc.save('emission-results.pdf');
     } catch (err) {
       console.error('PDF generation failed', err);

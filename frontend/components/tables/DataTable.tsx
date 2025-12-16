@@ -58,9 +58,32 @@ export default function DataTable({
     return raw.replace(/\.0$/, '');
   };
 
-  // Keep local state in sync when parent-provided variables change
+  // Keep local state in sync when parent-provided variables change,
+  // but preserve userInput values that the user has entered.
+  // Only update if the variables structure actually changed (new variables added/removed)
+  // or if userInput values in props are more recent (non-zero vs zero).
   useEffect(() => {
-    setEditedVariables(variables);
+    setEditedVariables((current) => {
+      // If variable count changed, use new props
+      if (current.length !== variables.length) {
+        return variables;
+      }
+      
+      // Otherwise, merge: keep current userInput if non-zero, otherwise use props
+      return variables.map((propVar, index) => {
+        const currentVar = current[index];
+        // If current has a non-zero userInput, preserve it unless props also has a non-zero userInput
+        if (currentVar && currentVar.userInput !== 0) {
+          // Keep current userInput unless props has a different non-zero value
+          return {
+            ...propVar,
+            userInput: propVar.userInput !== 0 ? propVar.userInput : currentVar.userInput,
+          };
+        }
+        // Otherwise use props as-is
+        return propVar;
+      });
+    });
   }, [variables]);
 
   const handleInputChange = (index: number, value: number) => {
@@ -107,8 +130,11 @@ export default function DataTable({
                 <td className="p-3">
                   <input
                     type="number"
-                    value={variable.userInput}
-                    onChange={(e) => handleInputChange(index, parseFloat(e.target.value) || 0)}
+                    value={variable.userInput === 0 ? 0 : variable.userInput}
+                    onChange={(e) => {
+                      const newValue = parseFloat(e.target.value) || 0;
+                      handleInputChange(index, newValue);
+                    }}
                     className="w-full bg-table-input text-dark-text px-3 py-2 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-blue hover:bg-table-input-hover transition-colors"
                     disabled={disabled}
                     step="0.01"

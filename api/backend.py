@@ -18,3 +18,4 @@ from backend.app.main import app as fastapi_app  # noqa: E402
 app = fastapi_app
 
 
+
