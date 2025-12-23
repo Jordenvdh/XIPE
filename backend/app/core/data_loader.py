@@ -44,37 +44,73 @@ class DataLoader:
         # Try multiple possible locations to find the data directory
         # OWASP #1 - Injection Prevention: Use Path objects for safe path handling
         
-        # Option 1: Relative to this file (local execution)
+        candidate_paths = []
+        
+        # Option 1: Relative to this file (local execution and Vercel)
         # __file__ is backend/app/core/data_loader.py
         # parent.parent.parent gets us to backend/
         base_dir = Path(__file__).parent.parent.parent
-        candidate_paths = [
-            base_dir / data_dir,  # backend/app/data
-        ]
+        candidate_paths.append(base_dir / data_dir)  # backend/app/data
         
-        # Option 2: From repo root (Vercel deployment)
-        # When running on Vercel via api/backend.py, cwd might be repo root
+        # Option 2: Absolute path from __file__ (Vercel serverless)
+        # On Vercel, __file__ might be /var/task/backend/app/core/data_loader.py
+        # Resolve to absolute path to handle symlinks
+        try:
+            abs_file = Path(__file__).resolve()
+            abs_base = abs_file.parent.parent.parent
+            if abs_base != base_dir:
+                candidate_paths.append(abs_base / data_dir)
+        except Exception:
+            pass
+        
+        # Option 3: From repo root (Vercel deployment)
+        # When running on Vercel via api/backend.py, files are in /var/task/
         repo_root = base_dir.parent
         candidate_paths.append(repo_root / "backend" / data_dir)  # repo_root/backend/app/data
         
-        # Option 3: From current working directory
-        # Fallback for different deployment scenarios
-        cwd = Path(os.getcwd())
-        candidate_paths.extend([
-            cwd / "backend" / data_dir,  # cwd/backend/app/data
-            cwd / data_dir,  # cwd/app/data (if cwd is backend/)
-        ])
+        # Option 4: Try to find backend module location
+        # This helps when modules are packaged differently
+        try:
+            import backend.app.core.data_loader as this_module
+            module_file = Path(this_module.__file__)
+            module_base = module_file.parent.parent.parent
+            if module_base not in [p.parent for p in candidate_paths]:
+                candidate_paths.append(module_base / data_dir)
+        except Exception:
+            pass
         
-        # Find the first existing path
+        # Option 5: From current working directory
+        # Fallback for different deployment scenarios
+        try:
+            cwd = Path(os.getcwd())
+            cwd_paths = [
+                cwd / "backend" / data_dir,  # cwd/backend/app/data
+                cwd / data_dir,  # cwd/app/data (if cwd is backend/)
+            ]
+            for path in cwd_paths:
+                if path not in candidate_paths:
+                    candidate_paths.append(path)
+        except Exception:
+            pass
+        
+        # Find the first existing path with CSV files
         self.data_dir = None
         for path in candidate_paths:
-            if path.exists() and path.is_dir():
-                self.data_dir = path
-                break
+            try:
+                abs_path = path.resolve()
+                if abs_path.exists() and abs_path.is_dir():
+                    # Verify at least one CSV file exists
+                    csv_files = list(abs_path.glob("*.csv"))
+                    if csv_files:
+                        self.data_dir = abs_path
+                        break
+            except Exception:
+                # Skip paths that cause errors
+                continue
         
         # If no path found, use the first candidate (will raise error later with better message)
         if self.data_dir is None:
-            self.data_dir = candidate_paths[0]
+            self.data_dir = candidate_paths[0] if candidate_paths else Path(data_dir)
         
         # Data caches: Store loaded dataframes to avoid reloading
         # These are loaded once and reused for all requests
@@ -104,10 +140,23 @@ class DataLoader:
         try:
             # Check if data directory exists
             if not self.data_dir.exists():
+                cwd_info = "N/A"
+                try:
+                    cwd_info = os.getcwd()
+                except Exception:
+                    pass
                 raise FileNotFoundError(
                     f"Data directory not found: {self.data_dir}. "
-                    f"Current working directory: {os.getcwd()}"
+                    f"Current working directory: {cwd_info}. "
+                    f"__file__ location: {__file__}"
                 )
+            
+            # List directory contents for debugging
+            dir_contents = []
+            try:
+                dir_contents = [str(p) for p in self.data_dir.iterdir()]
+            except Exception as e:
+                dir_contents = [f"Error listing directory: {e}"]
             
             # Load CO2 emissions data
             # This file contains CO2 emissions per km for new cars by country and year
@@ -115,7 +164,9 @@ class DataLoader:
             if not co2_path.exists():
                 raise FileNotFoundError(
                     f"Required file not found: {co2_path}. "
-                    f"Data directory contents: {list(self.data_dir.iterdir()) if self.data_dir.exists() else 'N/A'}"
+                    f"Data directory: {self.data_dir}. "
+                    f"Directory exists: {self.data_dir.exists()}. "
+                    f"Directory contents: {dir_contents}"
                 )
             self._car_co2 = pd.read_csv(co2_path)
             
@@ -123,14 +174,20 @@ class DataLoader:
             # Contains country-specific fleet statistics (age, fuel distribution)
             acea_path = self.data_dir / "acea_vehicle_data.csv"
             if not acea_path.exists():
-                raise FileNotFoundError(f"Required file not found: {acea_path}")
+                raise FileNotFoundError(
+                    f"Required file not found: {acea_path}. "
+                    f"Directory contents: {dir_contents}"
+                )
             self._car_acea = pd.read_csv(acea_path)
             
             # Load air emission limits
             # Contains NOx and PM emission limits by fuel type and year
             air_path = self.data_dir / "air_emission_limits.csv"
             if not air_path.exists():
-                raise FileNotFoundError(f"Required file not found: {air_path}")
+                raise FileNotFoundError(
+                    f"Required file not found: {air_path}. "
+                    f"Directory contents: {dir_contents}"
+                )
             self._air_emission = pd.read_csv(air_path)
             
             # Create electricity CO2 country data
@@ -138,10 +195,18 @@ class DataLoader:
             self._create_elec_co2_data()
             
         except Exception as e:
-            # Log error and re-raise for upstream handling
-            print(f"Error loading data: {e}")
-            print(f"Data directory path: {self.data_dir}")
-            print(f"Data directory exists: {self.data_dir.exists()}")
+            # Log error with full details for debugging
+            error_msg = (
+                f"Error loading data: {type(e).__name__}: {str(e)}\n"
+                f"Data directory path: {self.data_dir}\n"
+                f"Data directory exists: {self.data_dir.exists() if hasattr(self.data_dir, 'exists') else 'N/A'}\n"
+                f"__file__ location: {__file__}\n"
+            )
+            try:
+                error_msg += f"Current working directory: {os.getcwd()}\n"
+            except Exception:
+                error_msg += "Current working directory: N/A\n"
+            print(error_msg)
             raise
     
     def _create_elec_co2_data(self):
@@ -304,12 +369,40 @@ class DataLoader:
 
 # Global data loader instance
 _data_loader: Optional[DataLoader] = None
+_data_loader_error: Optional[Exception] = None
 
 
 def get_data_loader() -> DataLoader:
-    """Get or create global data loader instance"""
-    global _data_loader
-    if _data_loader is None:
+    """
+    Get or create global data loader instance
+    
+    Purpose:
+    - Lazy initialization of data loader
+    - Caches instance for performance
+    - Re-raises initialization errors if they occur
+    
+    Returns:
+        DataLoader instance
+        
+    Raises:
+        Exception: If data loader initialization fails
+    """
+    global _data_loader, _data_loader_error
+    
+    # If we've already tried and failed, re-raise the error
+    if _data_loader_error is not None:
+        raise _data_loader_error
+    
+    # If already initialized, return cached instance
+    if _data_loader is not None:
+        return _data_loader
+    
+    # Try to initialize
+    try:
         _data_loader = DataLoader()
-    return _data_loader
+        return _data_loader
+    except Exception as e:
+        # Cache the error so we don't keep trying
+        _data_loader_error = e
+        raise
 

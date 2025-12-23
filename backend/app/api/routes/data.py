@@ -74,18 +74,43 @@ async def get_countries():
         return countries
     except ValueError as e:
         # OWASP #10 - Logging: Log data loading errors for debugging
-        security_logger.error(f"Error loading countries - data not loaded: {str(e)}")
+        error_msg = str(e)
+        security_logger.error(f"Error loading countries - data not loaded: {error_msg}")
+        # Include more detail in development (check if we're in a dev environment)
+        detail_msg = "Error loading countries. Data files may be missing or inaccessible."
+        import os
+        if os.getenv("VERCEL_ENV") != "production":
+            detail_msg += f" Details: {error_msg[:200]}"  # Limit detail length
         raise HTTPException(
             status_code=500, 
-            detail="Error loading countries. Data files may be missing or inaccessible."
+            detail=detail_msg
+        )
+    except FileNotFoundError as e:
+        # OWASP #10 - Logging: Log file not found errors
+        error_msg = str(e)
+        security_logger.error(f"Error loading countries - file not found: {error_msg}")
+        detail_msg = "Error loading countries. Data files not found."
+        import os
+        if os.getenv("VERCEL_ENV") != "production":
+            detail_msg += f" Details: {error_msg[:200]}"
+        raise HTTPException(
+            status_code=500,
+            detail=detail_msg
         )
     except Exception as e:
         # OWASP #3 - Sensitive Data Exposure: Don't expose internal error details
         # OWASP #10 - Logging: Log full error details server-side for debugging
-        security_logger.error(f"Error loading countries: {type(e).__name__}: {str(e)}")
+        error_msg = f"{type(e).__name__}: {str(e)}"
+        security_logger.error(f"Error loading countries: {error_msg}")
+        import traceback
+        security_logger.error(f"Traceback: {traceback.format_exc()}")
+        detail_msg = "Error loading countries. Please try again later."
+        import os
+        if os.getenv("VERCEL_ENV") != "production":
+            detail_msg += f" Error: {error_msg[:200]}"
         raise HTTPException(
             status_code=500, 
-            detail="Error loading countries. Please try again later."
+            detail=detail_msg
         )
 
 
