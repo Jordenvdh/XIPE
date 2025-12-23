@@ -2,15 +2,10 @@
  * API functions for variables endpoints
  */
 import apiClient from './client';
-import type {
-  GeneralVariables,
-  TraditionalModesVariables,
-  SharedServicesVariables,
-  VariableRow,
-} from '@/lib/types';
+import type { VariableRow, GeneralVariables, TraditionalModesVariables } from '@/lib/types';
 
 /**
- * Get general variables
+ * Get general variables (returns defaults if none saved)
  */
 export async function getGeneralVariables(): Promise<GeneralVariables> {
   const response = await apiClient.get<GeneralVariables>('/api/variables/general');
@@ -18,14 +13,7 @@ export async function getGeneralVariables(): Promise<GeneralVariables> {
 }
 
 /**
- * Save general variables
- */
-export async function saveGeneralVariables(variables: GeneralVariables): Promise<void> {
-  await apiClient.post('/api/variables/general', variables);
-}
-
-/**
- * Get traditional modes variables
+ * Get traditional modes variables (returns empty arrays if none saved)
  */
 export async function getTraditionalModesVariables(): Promise<TraditionalModesVariables> {
   const response = await apiClient.get<TraditionalModesVariables>('/api/variables/traditional-modes');
@@ -33,12 +21,7 @@ export async function getTraditionalModesVariables(): Promise<TraditionalModesVa
 }
 
 /**
- * Get country-specific default variables for the private car mode.
- *
- * This uses the same backend datasets and correction factors as the
- * main calculation engine (CO2, NOx, PM based on fleet age and fuel mix),
- * so the visible defaults on the Variables page match what is used
- * internally for the calculations.
+ * Get country-specific private car defaults
  */
 export async function getPrivateCarDefaults(country: string): Promise<VariableRow[]> {
   const response = await apiClient.get<VariableRow[]>('/api/variables/traditional-modes/private-car-defaults', {
@@ -48,35 +31,9 @@ export async function getPrivateCarDefaults(country: string): Promise<VariableRo
 }
 
 /**
- * Save traditional mode variables
- */
-export async function saveTraditionalModeVariables(
-  mode: string,
-  variables: VariableRow[]
-): Promise<void> {
-  await apiClient.post(`/api/variables/traditional-modes/${mode}`, variables);
-}
-
-/**
- * Get shared services variables
+ * Get shared services variables (returns empty object if none saved)
  */
 export async function getSharedServicesVariables(): Promise<Record<string, VariableRow[]>> {
   const response = await apiClient.get<Record<string, VariableRow[]>>('/api/variables/shared-services');
   return response.data;
 }
-
-/**
- * Save shared service variables
- */
-export async function saveSharedServiceVariables(
-  service: string,
-  variables: VariableRow[]
-): Promise<void> {
-  await apiClient.post(`/api/variables/shared-services/${service}`, variables);
-}
-
-
-
-
-
-

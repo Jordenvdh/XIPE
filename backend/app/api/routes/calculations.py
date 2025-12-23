@@ -219,9 +219,10 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
             ],
             "var_nms_emoped": [
                 {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.1},
-                {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.1},
+                {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.1},
                 {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.1},
+                {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.1},
                 {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},

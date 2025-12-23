@@ -11,6 +11,12 @@ import Layout from '@/components/layout/Layout';
 import { useApp } from '@/context/AppContext';
 import { getCountries, getCountryData } from '@/lib/api/data';
 import { calculateEmissions } from '@/lib/api/calculations';
+import { 
+  getGeneralVariables, 
+  getTraditionalModesVariables, 
+  getPrivateCarDefaults,
+  getSharedServicesVariables 
+} from '@/lib/api/variables';
 import SelectInput from '@/components/forms/SelectInput';
 import CityAutocomplete from '@/components/forms/CityAutocomplete';
 import NumberInput from '@/components/forms/NumberInput';
@@ -118,10 +124,33 @@ export default function DashboardPage() {
     (modalSplit.activeModes.cycling.distance + modalSplit.activeModes.walking.distance) / 2 || 0;
 
   // Format numeric values for consistent on-screen and PDF rendering.
+  // Uses commas as thousand separators and only shows decimals if they are not zero.
   const formatNumber = (value: number, fractionDigits = 2) => {
-    return Number.isFinite(value)
-      ? Number(value).toLocaleString('en-GB', { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits })
-      : '0.00';
+    if (!Number.isFinite(value)) {
+      return '0';
+    }
+    
+    const numValue = Number(value);
+    
+    // If fractionDigits is 0, always return integer with commas
+    if (fractionDigits === 0) {
+      return Math.round(numValue).toLocaleString('en-US');
+    }
+    
+    // Check if the decimal part is zero (within a small epsilon to handle floating point precision)
+    const rounded = Math.round(numValue * Math.pow(10, fractionDigits)) / Math.pow(10, fractionDigits);
+    const hasDecimalPart = Math.abs(rounded - Math.round(rounded)) > 0.0001;
+    
+    if (hasDecimalPart) {
+      // Has decimal part - show decimals
+      return numValue.toLocaleString('en-US', { 
+        minimumFractionDigits: fractionDigits, 
+        maximumFractionDigits: fractionDigits 
+      });
+    } else {
+      // No decimal part - show as integer with commas
+      return Math.round(numValue).toLocaleString('en-US');
+    }
   };
 
   // Convert a public asset into a data URL so jsPDF can embed the logos.
@@ -147,6 +176,246 @@ export default function DashboardPage() {
     setIsDownloadingPdf(true);
 
     try {
+      // Fetch all variables (both saved and defaults) to include in PDF
+      // This ensures all variables are included, not just manually saved ones
+      const [
+        generalVarsFromApi,
+        traditionalModesFromApi,
+        privateCarDefaults,
+        sharedServicesFromApi
+      ] = await Promise.all([
+        getGeneralVariables(),
+        getTraditionalModesVariables(),
+        getPrivateCarDefaults(dashboard.country || 'Austria'),
+        getSharedServicesVariables()
+      ]);
+
+      // Default traditional modes variables (from backend calculations.py)
+      const defaultTraditionalModes = {
+        pt_road: [
+          { variable: 'CO2 emission factors Tank-to-Wheel (gr/km)', userInput: 0, defaultValue: 63.0 },
+          { variable: 'Average NOx emissions (mg/km)', userInput: 0, defaultValue: 30.67 },
+          { variable: 'Average PM emissions (mg/km)', userInput: 0, defaultValue: 0.67 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 20.0 },
+        ],
+        pt_rail: [
+          { variable: 'Average efficiency of public transport rail (kWh/km)', userInput: 0, defaultValue: 0.09 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 13.0 },
+        ],
+        cycling: [
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 17.0 },
+        ],
+        walking: [
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+        ],
+      };
+
+      // Default shared services variables (from backend calculations.py)
+      const defaultSharedServices: Record<string, Array<{ variable: string; userInput: number; defaultValue: number }>> = {
+        ice_car: [
+          { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average Tank-to-Wheel CO2 emissions (g/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average NOx emissions (mg/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average PM emissions (mg/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+        ],
+        ice_moped: [
+          { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average Tank-to-Wheel CO2 emissions (g/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average NOx emissions (mg/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average PM emissions (mg/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.001 },
+          { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+        ],
+        bike: [
+          { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+        ],
+        e_car: [
+          { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average efficiency of the electric vehicle (kWh/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+        ],
+        e_bike: [
+          { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average efficiency of the electric vehicle (kWh/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+        ],
+        e_moped: [
+          { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.1 },
+          { variable: 'Average efficiency of the electric vehicle (kWh/km)', userInput: 0, defaultValue: 0.1 },
+          { variable: 'Average NOx emissions (mg/km)', userInput: 0, defaultValue: 0.1 },
+          { variable: 'Average PM emissions (mg/km)', userInput: 0, defaultValue: 0.1 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+        ],
+        e_scooter: [
+          { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.2 },
+          { variable: 'Average efficiency of the electric vehicle (kWh/km)', userInput: 0, defaultValue: 0.2 },
+          { variable: 'Average NOx emissions (mg/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average PM emissions (mg/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+        ],
+        other: [
+          { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average Tank-to-Wheel CO2 emissions (g/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average NOx emissions (mg/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average PM emissions (mg/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+        ],
+        e_other: [
+          { variable: 'Average number of trips per day', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average efficiency of the electric vehicle (kWh/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Emission factor for life-cycle phases excluding use phase (gCO2/km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces private car by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT road by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces PT rail by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces cycling by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Replaces walking by (%)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing car (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT road (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing PT rail (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing cycling (km)', userInput: 0, defaultValue: 0.0 },
+          { variable: 'Average trip distance of the shared mode when replacing walking (km)', userInput: 0, defaultValue: 0.0 },
+        ],
+      };
+
+      // Merge saved variables with defaults
+      // General variables: use API response (always includes defaults)
+      const allGeneralVars = generalVarsFromApi.variables || variables.general || [];
+
+      // Traditional modes: merge saved with defaults
+      const allTraditionalModes: Record<string, Array<{ variable: string; userInput: number; defaultValue: number }>> = {
+        private_car: privateCarDefaults.length > 0 
+          ? privateCarDefaults 
+          : (variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar || []),
+        pt_road: traditionalModesFromApi.ptRoad.length > 0 
+          ? traditionalModesFromApi.ptRoad 
+          : defaultTraditionalModes.pt_road,
+        pt_rail: traditionalModesFromApi.ptRail.length > 0 
+          ? traditionalModesFromApi.ptRail 
+          : defaultTraditionalModes.pt_rail,
+        cycling: traditionalModesFromApi.activeTransport.length > 0 
+          ? [traditionalModesFromApi.activeTransport[0]] 
+          : defaultTraditionalModes.cycling,
+        walking: traditionalModesFromApi.activeTransport.length > 1 
+          ? [traditionalModesFromApi.activeTransport[1]] 
+          : defaultTraditionalModes.walking,
+      };
+
+      // Override with saved variables if they exist
+      if (variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar) {
+        allTraditionalModes.private_car = variables.traditionalModes.private_car || variables.traditionalModes.privateCar || [];
+      }
+      if (variables.traditionalModes?.pt_road || variables.traditionalModes?.ptRoad) {
+        allTraditionalModes.pt_road = variables.traditionalModes.pt_road || variables.traditionalModes.ptRoad || [];
+      }
+      if (variables.traditionalModes?.pt_rail || variables.traditionalModes?.ptRail) {
+        allTraditionalModes.pt_rail = variables.traditionalModes.pt_rail || variables.traditionalModes.ptRail || [];
+      }
+      if (variables.traditionalModes?.active_transport || variables.traditionalModes?.activeTransport) {
+        const activeTransport = variables.traditionalModes.active_transport || variables.traditionalModes.activeTransport || [];
+        if (activeTransport.length > 0) {
+          allTraditionalModes.cycling = [activeTransport[0]];
+        }
+        if (activeTransport.length > 1) {
+          allTraditionalModes.walking = [activeTransport[1]];
+        }
+      }
+
+      // Shared services: merge saved with defaults
+      const allSharedServices: Record<string, Array<{ variable: string; userInput: number; defaultValue: number }>> = { ...defaultSharedServices };
+      // Override with saved variables
+      Object.keys(sharedServicesFromApi).forEach(key => {
+        if (sharedServicesFromApi[key] && sharedServicesFromApi[key].length > 0) {
+          allSharedServices[key] = sharedServicesFromApi[key];
+        }
+      });
+      // Also check variables state for saved values
+      Object.keys(variables.sharedServices || {}).forEach(key => {
+        if (variables.sharedServices![key] && variables.sharedServices![key].length > 0) {
+          allSharedServices[key] = variables.sharedServices![key];
+        }
+      });
+
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 14;
@@ -376,19 +645,49 @@ export default function DashboardPage() {
 
       // Helper function to format variable value (show userInput if non-zero, otherwise defaultValue)
       // This matches the logic used in calculations: userInput !== 0 ? userInput : defaultValue
+      // Uses commas as thousand separators and only shows decimals if they are not zero.
       const formatVarValue = (row: { userInput: number; defaultValue: number }): string => {
         const value = row.userInput !== 0 ? row.userInput : row.defaultValue;
-        // Format small numbers properly (like 0.03)
-        if (Math.abs(value) < 1 && value !== 0) {
-          return value.toPrecision(3).replace(/(?:\.0+|(\.\d*?[1-9]))0*$/, '$1');
+        
+        if (!Number.isFinite(value)) {
+          return '0';
         }
-        return value.toFixed(1).replace(/\.0$/, '');
+        
+        // For small numbers (< 1), determine significant digits
+        if (Math.abs(value) < 1 && value !== 0) {
+          // Small numbers: use precision formatting, then add commas
+          const precisionFormatted = value.toPrecision(3).replace(/(?:\.0+|(\.\d*?[1-9]))0*$/, '$1');
+          const numValue = parseFloat(precisionFormatted);
+          if (!isNaN(numValue)) {
+            // Count decimal places in the precision formatted string
+            const decimalPlaces = precisionFormatted.includes('.') ? precisionFormatted.split('.')[1]?.length || 0 : 0;
+            return numValue.toLocaleString('en-US', {
+              minimumFractionDigits: decimalPlaces,
+              maximumFractionDigits: decimalPlaces,
+            });
+          }
+          return precisionFormatted;
+        }
+        
+        // For larger numbers: check if decimal part exists (up to 1 decimal place)
+        const rounded = Math.round(value * 10) / 10;
+        const hasDecimalPart = Math.abs(rounded - Math.round(rounded)) > 0.0001;
+        
+        if (hasDecimalPart) {
+          // Has decimal part - show 1 decimal place with commas
+          return value.toLocaleString('en-US', {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          });
+        } else {
+          // No decimal part - show as integer with commas
+          return Math.round(value).toLocaleString('en-US');
+        }
       };
 
-      // General Variables table
-      const generalVars = variables.general || [];
-      if (generalVars.length > 0) {
-        const generalRows = generalVars.map((row) => [
+      // General Variables table - include all variables (defaults are always present)
+      if (allGeneralVars.length > 0) {
+        const generalRows = allGeneralVars.map((row) => [
           row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
           formatVarValue(row),
         ]);
@@ -421,8 +720,8 @@ export default function DashboardPage() {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
 
-      // Private Car variables
-      const privateCarVars = variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar || [];
+      // Private Car variables - include all variables (defaults are always present)
+      const privateCarVars = allTraditionalModes.private_car || [];
       if (privateCarVars.length > 0) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
@@ -450,8 +749,8 @@ export default function DashboardPage() {
         currentY += 5;
       }
 
-      // PT Road variables
-      const ptRoadVars = variables.traditionalModes?.pt_road || variables.traditionalModes?.ptRoad || [];
+      // PT Road variables - include all variables (defaults are always present)
+      const ptRoadVars = allTraditionalModes.pt_road || [];
       if (ptRoadVars.length > 0) {
         if (currentY > 250) {
           doc.addPage();
@@ -483,8 +782,8 @@ export default function DashboardPage() {
         currentY += 5;
       }
 
-      // PT Rail variables
-      const ptRailVars = variables.traditionalModes?.pt_rail || variables.traditionalModes?.ptRail || [];
+      // PT Rail variables - include all variables (defaults are always present)
+      const ptRailVars = allTraditionalModes.pt_rail || [];
       if (ptRailVars.length > 0) {
         if (currentY > 250) {
           doc.addPage();
@@ -516,21 +815,21 @@ export default function DashboardPage() {
         currentY += 5;
       }
 
-      // Active Transport variables (cycling and walking)
-      const activeTransportVars = variables.traditionalModes?.active_transport || variables.traditionalModes?.activeTransport || [];
-      if (activeTransportVars.length > 0) {
+      // Cycling variables - include all variables (defaults are always present)
+      const cyclingVars = allTraditionalModes.cycling || [];
+      if (cyclingVars.length > 0) {
         if (currentY > 250) {
           doc.addPage();
           currentY = 20;
         }
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
-        doc.text('Active Transport', margin, currentY);
+        doc.text('Cycling', margin, currentY);
         currentY += 6;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
 
-        const activeTransportRows = activeTransportVars.map((row) => [
+        const cyclingRows = cyclingVars.map((row) => [
           row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
           formatVarValue(row),
         ]);
@@ -539,7 +838,40 @@ export default function DashboardPage() {
           startY: currentY,
           margin: { left: margin, right: margin },
           head: [['Variable', 'Value']],
-          body: activeTransportRows,
+          body: cyclingRows,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [0, 94, 184], textColor: 255 },
+          alternateRowStyles: { fillColor: [245, 248, 255] },
+          columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60 } },
+        });
+        currentY = (doc as any).lastAutoTable?.finalY || currentY;
+        currentY += 5;
+      }
+
+      // Walking variables - include all variables (defaults are always present)
+      const walkingVars = allTraditionalModes.walking || [];
+      if (walkingVars.length > 0) {
+        if (currentY > 250) {
+          doc.addPage();
+          currentY = 20;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Walking', margin, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+
+        const walkingRows = walkingVars.map((row) => [
+          row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
+          formatVarValue(row),
+        ]);
+
+        autoTable(doc, {
+          startY: currentY,
+          margin: { left: margin, right: margin },
+          head: [['Variable', 'Value']],
+          body: walkingRows,
           styles: { fontSize: 8 },
           headStyles: { fillColor: [0, 94, 184], textColor: 255 },
           alternateRowStyles: { fillColor: [245, 248, 255] },
@@ -576,54 +908,45 @@ export default function DashboardPage() {
         e_other: 'Shared e-Other',
       };
 
-      // Print all shared services that exist in variables.sharedServices
-      // These are the services that were used in the calculation (either explicitly set or with defaults)
-      if (variables.sharedServices && Object.keys(variables.sharedServices).length > 0) {
-        // Sort keys for consistent ordering
-        const serviceKeys = Object.keys(variables.sharedServices).sort();
-        
-        for (const key of serviceKeys) {
-          const vars = variables.sharedServices[key];
-          // Print all services that have variables (even if empty, they were used in calculation)
-          if (vars && Array.isArray(vars) && vars.length > 0) {
-            if (currentY > 240) {
-              doc.addPage();
-              currentY = 20;
-            }
-
-            const serviceName = sharedServiceNames[key] || key;
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10);
-            doc.text(serviceName, margin, currentY);
-            currentY += 6;
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(9);
-
-            const serviceRows = vars.map((row) => [
-              row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
-              formatVarValue(row),
-            ]);
-
-            autoTable(doc, {
-              startY: currentY,
-              margin: { left: margin, right: margin },
-              head: [['Variable', 'Value']],
-              body: serviceRows,
-              styles: { fontSize: 8 },
-              headStyles: { fillColor: [0, 94, 184], textColor: 255 },
-              alternateRowStyles: { fillColor: [245, 248, 255] },
-              columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60 } },
-            });
-            currentY = (doc as any).lastAutoTable?.finalY || currentY;
-            currentY += 5;
+      // Print all shared services - include all variables (defaults are always present)
+      // Sort keys for consistent ordering
+      const serviceKeys = Object.keys(allSharedServices).sort();
+      
+      for (const key of serviceKeys) {
+        const vars = allSharedServices[key];
+        // Print all services that have variables
+        if (vars && Array.isArray(vars) && vars.length > 0) {
+          if (currentY > 240) {
+            doc.addPage();
+            currentY = 20;
           }
+
+          const serviceName = sharedServiceNames[key] || key;
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.text(serviceName, margin, currentY);
+          currentY += 6;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+
+          const serviceRows = vars.map((row) => [
+            row.variable.length > 50 ? row.variable.substring(0, 47) + '...' : row.variable,
+            formatVarValue(row),
+          ]);
+
+          autoTable(doc, {
+            startY: currentY,
+            margin: { left: margin, right: margin },
+            head: [['Variable', 'Value']],
+            body: serviceRows,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [0, 94, 184], textColor: 255 },
+            alternateRowStyles: { fillColor: [245, 248, 255] },
+            columnStyles: { 0: { cellWidth: 120 }, 1: { cellWidth: 60 } },
+          });
+          currentY = (doc as any).lastAutoTable?.finalY || currentY;
+          currentY += 5;
         }
-      } else {
-        // If no shared services in variables, print a note
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'italic');
-        doc.text('No shared services variables available', margin, currentY);
-        currentY += 6;
       }
 
       doc.save('emission-results.pdf');
