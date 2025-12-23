@@ -59,7 +59,7 @@ async def get_countries():
     
     Returns:
         List of country names
-        
+    
     Security:
     - No user input required, safe to expose
     - Returns read-only data
@@ -72,9 +72,17 @@ async def get_countries():
         security_logger.info("Countries list accessed")
         
         return countries
+    except ValueError as e:
+        # OWASP #10 - Logging: Log data loading errors for debugging
+        security_logger.error(f"Error loading countries - data not loaded: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Error loading countries. Data files may be missing or inaccessible."
+        )
     except Exception as e:
         # OWASP #3 - Sensitive Data Exposure: Don't expose internal error details
-        security_logger.error(f"Error loading countries: {type(e).__name__}")
+        # OWASP #10 - Logging: Log full error details server-side for debugging
+        security_logger.error(f"Error loading countries: {type(e).__name__}: {str(e)}")
         raise HTTPException(
             status_code=500, 
             detail="Error loading countries. Please try again later."
@@ -189,6 +197,7 @@ async def get_electricity_intensity():
             status_code=500, 
             detail="Error loading electricity intensity data. Please try again later."
         )
+
 
 
 

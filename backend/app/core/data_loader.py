@@ -40,12 +40,41 @@ class DataLoader:
         Args:
             data_dir: Directory containing CSV data files (relative to backend/)
         """
-        # Path resolution: Get the base directory (backend/)
+        # Path resolution: Support both local execution and Vercel serverless
+        # Try multiple possible locations to find the data directory
+        # OWASP #1 - Injection Prevention: Use Path objects for safe path handling
+        
+        # Option 1: Relative to this file (local execution)
         # __file__ is backend/app/core/data_loader.py
         # parent.parent.parent gets us to backend/
-        # OWASP #1 - Injection Prevention: Use Path objects for safe path handling
         base_dir = Path(__file__).parent.parent.parent
-        self.data_dir = base_dir / data_dir
+        candidate_paths = [
+            base_dir / data_dir,  # backend/app/data
+        ]
+        
+        # Option 2: From repo root (Vercel deployment)
+        # When running on Vercel via api/backend.py, cwd might be repo root
+        repo_root = base_dir.parent
+        candidate_paths.append(repo_root / "backend" / data_dir)  # repo_root/backend/app/data
+        
+        # Option 3: From current working directory
+        # Fallback for different deployment scenarios
+        cwd = Path(os.getcwd())
+        candidate_paths.extend([
+            cwd / "backend" / data_dir,  # cwd/backend/app/data
+            cwd / data_dir,  # cwd/app/data (if cwd is backend/)
+        ])
+        
+        # Find the first existing path
+        self.data_dir = None
+        for path in candidate_paths:
+            if path.exists() and path.is_dir():
+                self.data_dir = path
+                break
+        
+        # If no path found, use the first candidate (will raise error later with better message)
+        if self.data_dir is None:
+            self.data_dir = candidate_paths[0]
         
         # Data caches: Store loaded dataframes to avoid reloading
         # These are loaded once and reused for all requests
@@ -73,23 +102,36 @@ class DataLoader:
         - air_emission_limits.csv: NOx and PM emission limits by year
         """
         try:
+            # Check if data directory exists
+            if not self.data_dir.exists():
+                raise FileNotFoundError(
+                    f"Data directory not found: {self.data_dir}. "
+                    f"Current working directory: {os.getcwd()}"
+                )
+            
             # Load CO2 emissions data
             # This file contains CO2 emissions per km for new cars by country and year
             co2_path = self.data_dir / "co2_emissions_new_cars_EU.csv"
-            if co2_path.exists():
-                self._car_co2 = pd.read_csv(co2_path)
+            if not co2_path.exists():
+                raise FileNotFoundError(
+                    f"Required file not found: {co2_path}. "
+                    f"Data directory contents: {list(self.data_dir.iterdir()) if self.data_dir.exists() else 'N/A'}"
+                )
+            self._car_co2 = pd.read_csv(co2_path)
             
             # Load ACEA vehicle data
             # Contains country-specific fleet statistics (age, fuel distribution)
             acea_path = self.data_dir / "acea_vehicle_data.csv"
-            if acea_path.exists():
-                self._car_acea = pd.read_csv(acea_path)
+            if not acea_path.exists():
+                raise FileNotFoundError(f"Required file not found: {acea_path}")
+            self._car_acea = pd.read_csv(acea_path)
             
             # Load air emission limits
             # Contains NOx and PM emission limits by fuel type and year
             air_path = self.data_dir / "air_emission_limits.csv"
-            if air_path.exists():
-                self._air_emission = pd.read_csv(air_path)
+            if not air_path.exists():
+                raise FileNotFoundError(f"Required file not found: {air_path}")
+            self._air_emission = pd.read_csv(air_path)
             
             # Create electricity CO2 country data
             # Derived dataset: Electricity emission intensity by country
@@ -98,6 +140,8 @@ class DataLoader:
         except Exception as e:
             # Log error and re-raise for upstream handling
             print(f"Error loading data: {e}")
+            print(f"Data directory path: {self.data_dir}")
+            print(f"Data directory exists: {self.data_dir.exists()}")
             raise
     
     def _create_elec_co2_data(self):
@@ -165,8 +209,22 @@ class DataLoader:
         return self._elec_co2_country
     
     def get_country_list(self) -> List[str]:
-        """Get list of available countries"""
-        return self.car_co2.columns.tolist()[1:-1]
+        """
+        Get list of available countries
+        
+        Returns:
+            List of country names from the CO2 emissions dataset
+            
+        Raises:
+            ValueError: If CO2 emissions data is not loaded
+        """
+        if self._car_co2 is None:
+            raise ValueError(
+                "CO2 emissions data not loaded. "
+                f"Data directory: {self.data_dir}, "
+                f"Exists: {self.data_dir.exists()}"
+            )
+        return self._car_co2.columns.tolist()[1:-1]
     
     def get_year_list(self) -> pd.Series:
         """Get list of available years"""
