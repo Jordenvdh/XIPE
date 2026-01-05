@@ -260,15 +260,174 @@ async def get_shared_services_variables():
     Get shared services variables
     
     Returns:
-        All shared services variables
+        All shared services variables with defaults if none saved
     """
-    if "sharedServices" in _variables_storage:
-        return {
-            k: [VariableRow(**v) for v in vars_list]
-            for k, vars_list in _variables_storage["sharedServices"].items()
-        }
+    # Default shared services variables (matching calculations.py)
+    default_shared_services = {
+        "ice_car": [
+            {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces cycling by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces walking by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing car (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT road (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT rail (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing cycling (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
+        ],
+        "ice_moped": [
+            {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.001},
+            {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces cycling by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces walking by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing car (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT road (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT rail (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing cycling (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
+        ],
+        "bike": [
+            {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces cycling by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces walking by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing car (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT road (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT rail (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing cycling (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
+        ],
+        "e_car": [
+            {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces cycling by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces walking by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing car (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT road (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT rail (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing cycling (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
+        ],
+        "e_bike": [
+            {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces cycling by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces walking by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing car (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT road (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT rail (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing cycling (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
+        ],
+        "e_moped": [
+            {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.1},
+            {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.1},
+            {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.1},
+            {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.1},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces cycling by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces walking by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing car (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT road (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT rail (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing cycling (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
+        ],
+        "e_scooter": [
+            {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.2},
+            {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.2},
+            {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces cycling by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces walking by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing car (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT road (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT rail (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing cycling (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
+        ],
+        "other": [
+            {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces cycling by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces walking by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing car (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT road (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT rail (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing cycling (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
+        ],
+        "e_other": [
+            {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces cycling by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Replaces walking by (%)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing car (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT road (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing PT rail (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing cycling (km)", "userInput": 0.0, "defaultValue": 0.0},
+            {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
+        ],
+    }
     
-    return {}
+    # Return saved values if they exist, otherwise return defaults
+    if "sharedServices" in _variables_storage:
+        saved = _variables_storage["sharedServices"]
+        result = {}
+        # Merge saved values with defaults (saved values override defaults)
+        for key in default_shared_services.keys():
+            if key in saved:
+                result[key] = [VariableRow(**v) for v in saved[key]]
+            else:
+                result[key] = [VariableRow(**v) for v in default_shared_services[key]]
+        return result
+    
+    # Return all defaults if nothing is saved
+    return {
+        k: [VariableRow(**v) for v in vars_list]
+        for k, vars_list in default_shared_services.items()
+    }
 
 
 @router.post("/shared-services/{service}")
