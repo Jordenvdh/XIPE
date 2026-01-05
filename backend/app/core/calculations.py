@@ -692,11 +692,27 @@ def _format_results(
     
     # Total results
     # CO2 totals
-    co2_per_mode = [per_mode[mode]["total"] for mode in NMS_TYPES]
-    co2_kg_per_day = sum(co2_per_mode)
-    # Convert kg/day -> ton/year (1 ton = 1000 kg)
-    co2_ton_per_year = co2_kg_per_day / 1000 * 365.25
-    co2_ton_per_year_per_1000 = co2_ton_per_year / inhabitants * 1000
+    # The API schema expects CO2 totals split into:
+    # - total
+    # - tankToWheel
+    # - wellToTank
+    # - lifeCycle
+    #
+    # Each category contains: kgPerDay, tonPerYear, tonPerYearPer1000
+    def _co2_category_totals(kg_per_day: float) -> Dict[str, float]:
+        # Convert kg/day -> ton/year (1 ton = 1000 kg)
+        ton_per_year = (kg_per_day / 1000.0) * 365.25
+        ton_per_year_per_1000 = (ton_per_year / inhabitants) * 1000.0 if inhabitants > 0 else 0.0
+        return {
+            "kgPerDay": float(kg_per_day),
+            "tonPerYear": float(ton_per_year),
+            "tonPerYearPer1000": float(ton_per_year_per_1000),
+        }
+
+    co2_total_kg_per_day = sum(per_mode[mode]["total"] for mode in NMS_TYPES)
+    co2_ttw_kg_per_day = sum(per_mode[mode]["ttw"] for mode in NMS_TYPES)
+    co2_wtt_kg_per_day = sum(per_mode[mode]["wtt"] for mode in NMS_TYPES)
+    co2_lca_kg_per_day = sum(per_mode[mode]["lca"] for mode in NMS_TYPES)
     
     # Air quality totals
     nox_g_per_day = sum([per_mode[mode]["nox"] for mode in NMS_TYPES])
@@ -711,21 +727,22 @@ def _format_results(
         "perMode": per_mode,
         "totals": {
             "co2": {
-                "kgPerDay": float(co2_kg_per_day),
-                "tonPerYear": float(co2_ton_per_year),
-                "tonPerYearPer1000": float(co2_ton_per_year_per_1000)
+                "total": _co2_category_totals(co2_total_kg_per_day),
+                "tankToWheel": _co2_category_totals(co2_ttw_kg_per_day),
+                "wellToTank": _co2_category_totals(co2_wtt_kg_per_day),
+                "lifeCycle": _co2_category_totals(co2_lca_kg_per_day),
             },
             "airQuality": {
                 "nox": {
                     "gPerDay": float(nox_g_per_day),
                     "kgPerYear": float(nox_kg_per_year),
-                    "kgPerYearPer1000": float(nox_kg_per_year_per_1000)
+                    "kgPerYearPer1000": float(nox_kg_per_year_per_1000),
                 },
                 "pm": {
                     "gPerDay": float(pm_g_per_day),
                     "kgPerYear": float(pm_kg_per_year),
-                    "kgPerYearPer1000": float(pm_kg_per_year_per_1000)
-                }
+                    "kgPerYearPer1000": float(pm_kg_per_year_per_1000),
+                },
             }
         }
     }
