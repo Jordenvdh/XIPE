@@ -360,15 +360,24 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
         # OWASP #10 - Logging: Log errors with limited detail
         import traceback
         error_traceback = traceback.format_exc()
+        
+        # Extract more details for KeyError
+        error_message = str(e)
+        if isinstance(e, KeyError):
+            error_message = f"KeyError: missing key '{e.args[0] if e.args else 'unknown'}'"
+        
         # Log full error internally for debugging
         security_logger.error(
             f"Calculation error: country={request.country}, "
             f"error_type={type(e).__name__}, "
-            f"error_message={str(e)[:200]}, "
-            f"traceback={error_traceback[:500]}"
+            f"error_message={error_message[:200]}, "
+            f"traceback={error_traceback[:1000]}"
         )
-        # Return generic error to client (but include error type for debugging in development)
-        error_detail = f"An error occurred during calculation: {type(e).__name__}"
+        # Return more detailed error to client (but sanitized)
+        if isinstance(e, KeyError):
+            error_detail = f"An error occurred during calculation: {type(e).__name__} - missing key '{e.args[0] if e.args else 'unknown'}'"
+        else:
+            error_detail = f"An error occurred during calculation: {type(e).__name__} - {error_message[:100]}"
         raise HTTPException(
             status_code=500, 
             detail=error_detail
