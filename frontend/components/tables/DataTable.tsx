@@ -111,18 +111,18 @@ export default function DataTable({
   };
 
   return (
-    <div className="mb-8">
+    <div className="mb-6">
       {title && (
-        <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">{title}</h3>
+        <h3 className="text-lg font-bold mb-3 text-gray-900 dark:text-white">{title}</h3>
       )}
       
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-gray-300 dark:border-gray-600">
-              <th className="text-left p-3 font-semibold text-gray-900 dark:text-white">Variable</th>
-              <th className="text-left p-3 font-semibold text-gray-900 dark:text-white">User Input</th>
-              <th className="text-left p-3 font-semibold text-gray-900 dark:text-white">Default Value</th>
+              <th className="text-left py-2 px-2 font-semibold text-gray-900 dark:text-white text-sm">Variable</th>
+              <th className="text-left py-2 px-2 font-semibold text-gray-900 dark:text-white text-sm">User Input</th>
+              <th className="text-left py-2 px-2 font-semibold text-gray-900 dark:text-white text-sm">Default Value</th>
             </tr>
           </thead>
           <tbody>
@@ -133,8 +133,8 @@ export default function DataTable({
                 className="border-b border-gray-200 dark:border-gray-700 hover:bg-[var(--hover-bg)] transition-colors"
               >
                 {/* OWASP #7 - XSS: React automatically escapes variable.variable */}
-                <td className="p-3 text-gray-900 dark:text-white">{variable.variable}</td>
-                <td className="p-3">
+                <td className="py-2 px-2 text-gray-900 dark:text-white text-sm">{variable.variable}</td>
+                <td className="py-2 px-2">
                   {/* OWASP #7 - XSS: type="number" restricts input to numeric values only */}
                   <input
                     type="number"
@@ -144,7 +144,7 @@ export default function DataTable({
                       const newValue = parseFloat(e.target.value) || 0;
                       handleInputChange(index, newValue);
                     }}
-                    className="w-full bg-table-input text-dark-text px-3 py-2 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-blue hover:bg-table-input-hover transition-colors"
+                    className="w-full bg-table-input text-dark-text px-2 py-1.5 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-blue hover:bg-table-input-hover transition-colors text-sm"
                     disabled={disabled}
                     step="0.01"
                     min="0"
@@ -152,7 +152,7 @@ export default function DataTable({
                   />
                 </td>
                 {/* OWASP #7 - XSS: formatDefaultValue returns string, React escapes it */}
-                <td className="p-3 text-gray-800 dark:text-gray-400">
+                <td className="py-2 px-2 text-gray-800 dark:text-gray-400 text-sm">
                   {formatDefaultValue(variable.defaultValue)}
                 </td>
               </tr>
