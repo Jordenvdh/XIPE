@@ -161,7 +161,7 @@ export default function TraditionalModesVariablesPage() {
     <Layout>
       <div className="container mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
-          Variables for Traditional Modes
+          Traditional Modes Variables
         </h1>
 
         {error && (
@@ -172,10 +172,26 @@ export default function TraditionalModesVariablesPage() {
           <Alert type="success" message={saveMessage} onClose={() => setSaveMessage(null)} />
         )}
 
-        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            <strong>Note:</strong> Changes to variables will be saved and used in calculations. 
-            Default values are provided for reference. User input values override defaults when provided.
+        {/* Original explanatory text */}
+        <div className="mb-6 text-gray-700 dark:text-gray-300">
+          <p className="mb-2">
+            On this page the variables and factors of the traditional modes are displayed per mode. All variables on this page have default 
+            values displayed. If the user has specific variable values they can fill these in the User Input column, this will override 
+            the default values in the calculations.
+          </p>
+          <p className="mb-2 font-semibold">
+            Calculations will use the whole User Input column. Therefore, when using user input be sure to fill in all user input cells, 
+            copy default values where needed.
+          </p>
+          <p>
+            Changes on the Variables pages will directly change the Estimated Emission Change tables displayed on the Dashboard page.
+          </p>
+        </div>
+
+        {/* Original warning box */}
+        <div className="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded">
+          <p className="text-yellow-800 dark:text-yellow-200 font-medium">
+            Don't forget to click the save buttons to save the data in the table.
           </p>
         </div>
 
@@ -183,7 +199,7 @@ export default function TraditionalModesVariablesPage() {
         <DataTable
           variables={generalVars}
           onSave={handleSaveGeneral}
-          title="General Variables"
+          title="General variables"
         />
 
         {/* Private Car Variables */}
@@ -191,11 +207,11 @@ export default function TraditionalModesVariablesPage() {
           <DataTable
             variables={traditionalModes.privateCar}
             onSave={handleSavePrivateCar}
-            title="Private Car Variables"
+            title="Private Car (per vehicle km)"
           />
         ) : (
           <div className="mb-8">
-            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Private Car Variables</h3>
+            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Private Car (per vehicle km)</h3>
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 <strong>Note:</strong> Private car variables are country-specific. 
@@ -210,21 +226,21 @@ export default function TraditionalModesVariablesPage() {
         <DataTable
           variables={traditionalModes.ptRoad}
           onSave={handleSavePtRoad}
-          title="Public Transport Road Variables"
+          title="Public Transport Road (per passenger km)"
         />
 
         {/* Public Transport Rail Variables */}
         <DataTable
           variables={traditionalModes.ptRail}
           onSave={handleSavePtRail}
-          title="Public Transport Rail Variables"
+          title="Public Transport Rail (per passenger km)"
         />
 
         {/* Active Transport Variables */}
         <DataTable
           variables={traditionalModes.activeTransport}
           onSave={handleSaveActiveTransport}
-          title="Active Transport Variables"
+          title="Active Transport (per vehicle km)"
         />
       </div>
     </Layout>

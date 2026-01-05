@@ -28,17 +28,17 @@ const SERVICE_MAPPING: Record<string, string> = {
   'eOther': 'e_other',
 };
 
-// Display names for services
+// Display names for services (matching original Streamlit page)
 const SERVICE_NAMES: Record<string, string> = {
   'iceCar': 'Shared ICE Car',
   'iceMoped': 'Shared ICE Moped',
-  'bike': 'Shared Bike',
+  'bike': 'Shared bike',
   'eCar': 'Shared e-Car',
-  'eBike': 'Shared e-Bike',
+  'eBike': 'Shared e-bike',
   'eMoped': 'Shared e-Moped',
   'eScooter': 'Shared e-Scooter',
-  'other': 'Shared Other',
-  'eOther': 'Shared e-Other',
+  'other': 'Shared Other', // Will be dynamic based on user input
+  'eOther': 'Shared e-Other', // Will be dynamic based on user input
 };
 
 export default function SharedServicesVariablesPage() {
@@ -95,7 +95,7 @@ export default function SharedServicesVariablesPage() {
     <Layout>
       <div className="container mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
-          Variables for Shared Services
+          Shared Modes Variables
         </h1>
 
         {error && (
@@ -106,11 +106,26 @@ export default function SharedServicesVariablesPage() {
           <Alert type="success" message={saveMessage} onClose={() => setSaveMessage(null)} />
         )}
 
-        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            <strong>Note:</strong> Changes to variables will be saved and used in calculations. 
-            Default values are provided for reference. User input values override defaults when provided.
-            If a service has no variables, the table will be empty until variables are added.
+        {/* Original explanatory text */}
+        <div className="mb-6 text-gray-700 dark:text-gray-300">
+          <p className="mb-2">
+            On this page the variables and factors of the shared mobility services are displayed per service. All variables on this page have default 
+            values displayed. If the user has specific variable values they can fill these in the User Input column, this will override 
+            the default values in the calculations.
+          </p>
+          <p className="mb-2 font-semibold">
+            Calculations will use the whole User Input column. Therefore, when using user input be sure to fill in all user input cells, 
+            copy default values where needed.
+          </p>
+          <p>
+            Changes on the Variables pages will directly change the Estimated Emission Change tables displayed on the Dashboard page.
+          </p>
+        </div>
+
+        {/* Original warning box */}
+        <div className="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded">
+          <p className="text-yellow-800 dark:text-yellow-200 font-medium">
+            Don't forget to click the save buttons to save the data in the table.
           </p>
         </div>
 
@@ -119,12 +134,7 @@ export default function SharedServicesVariablesPage() {
           const variables = sharedServices[serviceKey] || [];
           const displayName = SERVICE_NAMES[serviceKey] || serviceKey;
 
-          // Only show table if it has variables or if we want to show empty ones
-          // For now, only show if variables exist
-          if (variables.length === 0) {
-            return null;
-          }
-
+          // Always show all services, even if empty (matching original Streamlit behavior)
           return (
             <DataTable
               key={serviceKey}
@@ -134,14 +144,6 @@ export default function SharedServicesVariablesPage() {
             />
           );
         })}
-
-        {/* Show message if no services have variables */}
-        {allServiceKeys.every(key => !sharedServices[key] || sharedServices[key].length === 0) && (
-          <div className="text-center py-12 text-gray-600 dark:text-gray-400">
-            <p>No shared services variables have been configured yet.</p>
-            <p className="mt-2 text-sm">Variables will appear here once they are configured in the dashboard.</p>
-          </div>
-        )}
       </div>
     </Layout>
   );
