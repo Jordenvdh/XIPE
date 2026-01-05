@@ -140,15 +140,16 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
                 if mode_key not in traditional_modes_dict or len(traditional_modes_dict.get(mode_key, [])) == 0:
                     traditional_modes_dict[mode_key] = default_trad_modes[mode_key]
         
-        # Default shared services variables (all zeros from original code)
-        # These are needed even if no shared modes are configured
+        # Default shared services variables from original Streamlit code (XIPE-main/pages/1_📊_Dashboard.py)
+        # Note: Replacement percentages and trip distances are set dynamically from dashboard modal split,
+        # so they remain 0.0 here and get updated during calculations
         default_shared_services = {
             "var_nms_ICEcar": [
-                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 5.00},
+                {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 133.38},
+                {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 60.00},
+                {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 4.50},
+                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 55.00},
                 {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
@@ -161,11 +162,11 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
                 {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
             ],
             "var_nms_ICEmoped": [
-                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.001},
+                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 5.00},
+                {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 37.00},
+                {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 60.00},
+                {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 4.50},
+                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 31.00},
                 {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
@@ -178,8 +179,8 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
                 {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
             ],
             "var_nms_bike": [
-                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 4.00},
+                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 58.00},
                 {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
@@ -192,9 +193,9 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
                 {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
             ],
             "var_nms_ev": [
-                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 5.00},
+                {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.17},
+                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 81.00},
                 {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
@@ -207,9 +208,9 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
                 {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
             ],
             "var_nms_ebike": [
-                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 4.00},
+                {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.0103},
+                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 71.00},
                 {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
@@ -222,12 +223,12 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
                 {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
             ],
             "var_nms_emoped": [
-                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.1},
+                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 5.00},
                 {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.1},
-                {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.1},
-                {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.1},
-                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+                {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
+                {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
+                {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.033},
+                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 59.00},
                 {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
@@ -240,11 +241,11 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
                 {"variable": "Average trip distance of the shared mode when replacing walking (km)", "userInput": 0.0, "defaultValue": 0.0},
             ],
             "var_nms_escooter": [
-                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 0.2},
-                {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.2},
+                {"variable": "Average number of trips per day", "userInput": 0.0, "defaultValue": 5.00},
+                {"variable": "Average efficiency of the electric vehicle (kWh/km)", "userInput": 0.0, "defaultValue": 0.016},
                 {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
-                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+                {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 100.00},
                 {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
                 {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
