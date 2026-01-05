@@ -345,15 +345,20 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
         return CalculationResponse(**results)
         
     except ValueError as e:
-        # OWASP #3 - Sensitive Data Exposure: Don't expose full error details
-        # OWASP #10 - Logging: Log validation errors
+        # OWASP #3 - Sensitive Data Exposure:
+        # - These ValueErrors are raised by our own validation guards (shape/columns/ranges),
+        #   and should not contain secrets.
+        # - Still, keep the message short and avoid echoing full payloads.
+        #
+        # OWASP #10 - Logging: Log validation errors for monitoring/debugging.
+        reason = str(e)
         security_logger.warning(
             f"Calculation validation error: country={request.country}, "
-            f"error={str(e)[:100]}"
+            f"reason={reason[:200]}"
         )
         raise HTTPException(
-            status_code=400, 
-            detail="Invalid input data. Please check your input values."
+            status_code=400,
+            detail=f"Invalid input data. Reason: {reason[:200]}"
         )
     except Exception as e:
         # OWASP #3 - Sensitive Data Exposure: Generic error message
