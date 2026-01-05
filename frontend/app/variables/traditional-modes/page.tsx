@@ -9,9 +9,11 @@ import Layout from '@/components/layout/Layout';
 import DataTable from '@/components/tables/DataTable';
 import Alert from '@/components/forms/Alert';
 import LoadingSpinner from '@/components/forms/LoadingSpinner';
+import { useApp } from '@/context/AppContext';
 import { 
   getGeneralVariables, 
   getTraditionalModesVariables,
+  getPrivateCarDefaults,
   saveGeneralVariables,
   saveTraditionalModeVariables 
 } from '@/lib/api/variables';
@@ -38,6 +40,7 @@ const defaultTraditionalModes = {
 };
 
 export default function TraditionalModesVariablesPage() {
+  const { dashboard } = useApp();
   const [generalVars, setGeneralVars] = useState<VariableRow[]>([]);
   const [traditionalModes, setTraditionalModes] = useState<TraditionalModesVariables>({
     privateCar: [],
@@ -49,24 +52,27 @@ export default function TraditionalModesVariablesPage() {
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  // Load variables on mount
+  // Load variables on mount and when country changes
   useEffect(() => {
     const loadVariables = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        const [generalData, traditionalData] = await Promise.all([
+        const country = dashboard.country || 'Austria';
+        
+        const [generalData, traditionalData, privateCarDefaults] = await Promise.all([
           getGeneralVariables(),
-          getTraditionalModesVariables()
+          getTraditionalModesVariables(),
+          getPrivateCarDefaults(country).catch(() => []) // Fallback to empty array if fails
         ]);
         
         setGeneralVars(generalData.variables || []);
         
         // Backend now returns defaults, so use the data directly
-        // Private car is empty by default (country-specific)
+        // Private car defaults come from country-specific endpoint
         setTraditionalModes({
-          privateCar: traditionalData.privateCar || [],
+          privateCar: privateCarDefaults.length > 0 ? privateCarDefaults : (traditionalData.privateCar || []),
           ptRoad: traditionalData.ptRoad || [],
           ptRail: traditionalData.ptRail || [],
           activeTransport: traditionalData.activeTransport || [],
@@ -80,7 +86,7 @@ export default function TraditionalModesVariablesPage() {
     };
 
     loadVariables();
-  }, []);
+  }, [dashboard.country]);
 
   const handleSaveGeneral = async (variables: VariableRow[]) => {
     try {
