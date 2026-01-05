@@ -970,84 +970,52 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      // Ensure variables are properly structured
-      // If variables are empty, use defaults from context
-      
-      // Convert traditional modes keys from snake_case to camelCase for backend
-      // Only include keys with non-empty arrays (backend will use defaults for missing keys)
-      const convertTraditionalModes = (modes: Record<string, any>): Record<string, any> => {
-        const converted: Record<string, any> = {};
-        // Map snake_case to camelCase
-        const keyMapping: Record<string, string> = {
-          'private_car': 'privateCar',
-          'pt_road': 'ptRoad',
-          'pt_rail': 'ptRail',
-          'active_transport': 'activeTransport',
-          'cycling': 'cycling',
-          'walking': 'walking',
-        };
-        
-        // Also handle already camelCase keys
-        Object.keys(modes).forEach(key => {
-          const camelKey = keyMapping[key] || key;
-          // Only include if it's a valid key AND has non-empty data
-          if (['privateCar', 'ptRoad', 'ptRail', 'activeTransport', 'cycling', 'walking'].includes(camelKey)) {
-            const data = modes[key];
-            // Only include if data exists and is not empty
-            if (data && Array.isArray(data) && data.length > 0) {
-              converted[camelKey] = data;
-            }
-          }
-        });
-        
-        return converted;
-      };
-      
-      // Shared services: backend expects snake_case keys (ice_car, ice_moped, etc.)
-      // Frontend may have camelCase keys, so convert them back to snake_case
-      // Only include keys with non-empty arrays (backend will use defaults for missing keys)
-      const convertSharedServices = (services: Record<string, any>): Record<string, any> => {
-        const converted: Record<string, any> = {};
-        // Map camelCase back to snake_case (backend expects snake_case)
-        const keyMapping: Record<string, string> = {
-          'iceCar': 'ice_car',
-          'iceMoped': 'ice_moped',
-          'bike': 'bike',
-          'eCar': 'e_car',
-          'eBike': 'e_bike',
-          'eMoped': 'e_moped',
-          'eScooter': 'e_scooter',
-          'other': 'other',
-          'eOther': 'e_other',
-        };
-        
-        Object.keys(services).forEach(key => {
-          const snakeKey = keyMapping[key] || key;
-          const data = services[key];
-          // Only include if data exists and is not empty
-          if (data && Array.isArray(data) && data.length > 0) {
-            converted[snakeKey] = data;
-          }
-        });
-        
-        return converted;
-      };
-      
+      /**
+       * Calculation variables sourcing (matches Streamlit intent)
+       *
+       * Purpose:
+       * - Use the persisted Variables tables as the source of truth for calculations
+       * - Fall back to backend-provided defaults when nothing is saved yet
+       *
+       * Why:
+       * - The dashboard context starts with empty `traditionalModes` and `sharedServices`
+       * - If we send empty objects, the calculation will legitimately produce zeros
+       *   (no trips/day, no replacement shares, no distances)
+       */
+      const [
+        generalVarsFromApi,
+        traditionalModesFromApi,
+        privateCarDefaults,
+        sharedServicesFromApi,
+      ] = await Promise.all([
+        getGeneralVariables(),
+        getTraditionalModesVariables(),
+        getPrivateCarDefaults(dashboard.country || 'Austria'),
+        getSharedServicesVariables(),
+      ]);
+
+      // Build request variables in the shape expected by the backend calculation endpoint.
+      // - traditionalModes: camelCase keys (privateCar/ptRoad/ptRail/activeTransport)
+      // - sharedServices: snake_case keys (ice_car, e_bike, ...)
       const requestVariables = {
-        general: variables.general.length > 0 
-          ? variables.general 
-          : [
-              { variable: 'Average CO2 emission intensity for electricity generation (gCO2/kWh)', userInput: 0, defaultValue: 96.0 },
-              { variable: 'Well-to-Tank emissions fraction of Well-to-Wheel emissions ICE cars (%)', userInput: 0, defaultValue: 20.0 },
-              { variable: 'Average age of the car fleet (years)', userInput: 0, defaultValue: 9.3 },
-              { variable: 'Percentage of petrol cars in the current fleet (%)', userInput: 0, defaultValue: 42.2 },
-              { variable: 'Percentage of diesel cars in the current fleet (%)', userInput: 0, defaultValue: 49.9 },
-              { variable: 'Percentage of electric cars in the current fleet (%)', userInput: 0, defaultValue: 7.8 },
-            ],
-        // Send traditionalModes - only include keys with data (backend will use defaults for missing keys)
-        traditionalModes: convertTraditionalModes(variables.traditionalModes),
-        // Send sharedServices - only include keys with data (backend will use defaults for missing keys)
-        sharedServices: convertSharedServices(variables.sharedServices),
+        // General variables endpoint always returns defaults if not saved.
+        general: (generalVarsFromApi.variables && generalVarsFromApi.variables.length > 0)
+          ? generalVarsFromApi.variables
+          : variables.general,
+
+        // Traditional modes:
+        // - Private car is country-specific, use dedicated endpoint.
+        // - Others come from /traditional-modes (backend returns defaults if not saved).
+        traditionalModes: {
+          privateCar: privateCarDefaults || [],
+          ptRoad: traditionalModesFromApi.ptRoad || [],
+          ptRail: traditionalModesFromApi.ptRail || [],
+          activeTransport: traditionalModesFromApi.activeTransport || [],
+        },
+
+        // Shared services variables (snake_case keys from backend).
+        // Backend now returns defaults for all services even if not saved.
+        sharedServices: sharedServicesFromApi || {},
       };
 
       // Prepare calculation request
