@@ -394,7 +394,8 @@ def _update_defaults_from_dashboard(
     if country not in data_loader.car_co2.columns:
         raise ValueError(f"Country '{country}' not found in car CO2 emissions data")
     
-    default_co2_car = data_loader.car_co2.loc[year_index, country]
+    # Use iloc for integer-based positional access (more reliable than loc with integer index)
+    default_co2_car = data_loader.car_co2.iloc[year_index][country]
     
     # Apply NEDC/WLTP correction factors
     if car_year <= 2020:
@@ -413,10 +414,11 @@ def _update_defaults_from_dashboard(
     if missing_cols:
         raise ValueError(f"Air emission DataFrame missing required columns: {missing_cols}")
     
-    petrol_nox = data_loader.air_emission.loc[year_index, "petrol_nox"]
-    diesel_nox = data_loader.air_emission.loc[year_index, "diesel_nox"]
-    petrol_pm = data_loader.air_emission.loc[year_index, "petrol_pm"]
-    diesel_pm = data_loader.air_emission.loc[year_index, "diesel_pm"]
+    # Use iloc for integer-based positional access (more reliable than loc with integer index)
+    petrol_nox = data_loader.air_emission.iloc[year_index]["petrol_nox"]
+    diesel_nox = data_loader.air_emission.iloc[year_index]["diesel_nox"]
+    petrol_pm = data_loader.air_emission.iloc[year_index]["petrol_pm"]
+    diesel_pm = data_loader.air_emission.iloc[year_index]["diesel_pm"]
     
     default_nox_car = (fuel_dist["petrol"] / 100 * petrol_nox + 
                       fuel_dist["diesel"] / 100 * diesel_nox) * 1000
