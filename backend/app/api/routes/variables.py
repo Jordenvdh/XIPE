@@ -84,24 +84,51 @@ async def get_traditional_modes_variables():
     Get traditional modes variables
     
     Returns:
-        All traditional modes variables
+        All traditional modes variables with defaults if none saved
     """
-    # Return saved values from storage if they exist, otherwise return empty arrays
+    # Default traditional modes variables (matching calculations.py)
+    default_trad_modes = {
+        "pt_road": [
+            {"variable": "CO2 emission factors Tank-to-Wheel (gr/km)", "userInput": 0.0, "defaultValue": 63.0},
+            {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 30.67},
+            {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.67},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 20.0},
+        ],
+        "pt_rail": [
+            {"variable": "Average efficiency of public transport rail (kWh/km)", "userInput": 0.0, "defaultValue": 0.09},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 13.0},
+        ],
+        "cycling": [
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 17.0},
+        ],
+        "walking": [
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
+        ],
+    }
+    
+    # Return saved values if they exist, otherwise return defaults
     if "traditionalModes" in _variables_storage:
         stored = _variables_storage["traditionalModes"]
+        # Use saved active transport if it exists and has at least 2 items (cycling + walking), otherwise use defaults
+        saved_active = stored.get("active_transport", [])
+        if saved_active and len(saved_active) >= 2:
+            active_transport = [VariableRow(**v) for v in saved_active]
+        else:
+            active_transport = [VariableRow(**v) for v in default_trad_modes["cycling"]] + [VariableRow(**v) for v in default_trad_modes["walking"]]
+        
         return TraditionalModesVariables(
             privateCar=[VariableRow(**v) for v in stored.get("private_car", [])],
-            ptRoad=[VariableRow(**v) for v in stored.get("pt_road", [])],
-            ptRail=[VariableRow(**v) for v in stored.get("pt_rail", [])],
-            activeTransport=[VariableRow(**v) for v in stored.get("active_transport", [])]
+            ptRoad=[VariableRow(**v) for v in stored.get("pt_road", default_trad_modes["pt_road"])],
+            ptRail=[VariableRow(**v) for v in stored.get("pt_rail", default_trad_modes["pt_rail"])],
+            activeTransport=active_transport
         )
     
-    # Return empty arrays if nothing is saved
+    # Return defaults if nothing is saved
     return TraditionalModesVariables(
         privateCar=[],
-        ptRoad=[],
-        ptRail=[],
-        activeTransport=[]
+        ptRoad=[VariableRow(**v) for v in default_trad_modes["pt_road"]],
+        ptRail=[VariableRow(**v) for v in default_trad_modes["pt_rail"]],
+        activeTransport=[VariableRow(**v) for v in default_trad_modes["cycling"]] + [VariableRow(**v) for v in default_trad_modes["walking"]]
     )
 
 

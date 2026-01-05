@@ -101,7 +101,7 @@ export default function SharedServicesVariablesPage() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
           Shared Modes Variables
         </h1>
@@ -132,7 +132,7 @@ export default function SharedServicesVariablesPage() {
 
         {/* Improved warning box with better readability */}
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 rounded">
-          <p className="text-blue-900 dark:text-blue-100 font-medium">
+          <p className="text-gray-900 dark:text-gray-100 font-medium">
             Don't forget to click the save buttons to save the data in the table.
           </p>
         </div>

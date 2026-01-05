@@ -63,20 +63,13 @@ export default function TraditionalModesVariablesPage() {
         
         setGeneralVars(generalData.variables || []);
         
-        // Use defaults if arrays are empty
+        // Backend now returns defaults, so use the data directly
+        // Private car is empty by default (country-specific)
         setTraditionalModes({
-          privateCar: traditionalData.privateCar.length > 0 
-            ? traditionalData.privateCar 
-            : [], // Private car defaults come from country-specific endpoint
-          ptRoad: traditionalData.ptRoad.length > 0 
-            ? traditionalData.ptRoad 
-            : defaultTraditionalModes.pt_road,
-          ptRail: traditionalData.ptRail.length > 0 
-            ? traditionalData.ptRail 
-            : defaultTraditionalModes.pt_rail,
-          activeTransport: traditionalData.activeTransport.length > 0 
-            ? traditionalData.activeTransport 
-            : [...defaultTraditionalModes.cycling, ...defaultTraditionalModes.walking],
+          privateCar: traditionalData.privateCar || [],
+          ptRoad: traditionalData.ptRoad || [],
+          ptRail: traditionalData.ptRail || [],
+          activeTransport: traditionalData.activeTransport || [],
         });
       } catch (err) {
         console.error('Error loading variables:', err);
@@ -159,7 +152,7 @@ export default function TraditionalModesVariablesPage() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
           Traditional Modes Variables
         </h1>
@@ -190,7 +183,7 @@ export default function TraditionalModesVariablesPage() {
 
         {/* Improved warning box with better readability */}
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 rounded">
-          <p className="text-blue-900 dark:text-blue-100 font-medium">
+          <p className="text-gray-900 dark:text-gray-100 font-medium">
             Don't forget to click the save buttons to save the data in the table.
           </p>
         </div>
