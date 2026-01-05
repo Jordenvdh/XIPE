@@ -386,6 +386,10 @@ def _update_defaults_from_dashboard(
     max_year = year_list.max()
     year_index = int(max_year - car_year)
     
+    # Validate year_index is within bounds
+    if year_index < 0 or year_index >= len(data_loader.car_co2):
+        raise ValueError(f"Year index {year_index} is out of bounds for car CO2 data (car_year={car_year}, max_year={max_year}, data_length={len(data_loader.car_co2)})")
+    
     # Check if country exists in car_co2 DataFrame
     if country not in data_loader.car_co2.columns:
         raise ValueError(f"Country '{country}' not found in car CO2 emissions data")
@@ -399,6 +403,16 @@ def _update_defaults_from_dashboard(
         default_co2_car = default_co2_car * 1.14  # WLTP underestimation
     
     # Update NOx and PM based on fuel distribution
+    # Validate year_index is within bounds for air_emission DataFrame
+    if year_index < 0 or year_index >= len(data_loader.air_emission):
+        raise ValueError(f"Year index {year_index} is out of bounds for air emission data (car_year={car_year}, max_year={max_year}, data_length={len(data_loader.air_emission)})")
+    
+    # Check if required columns exist in air_emission DataFrame
+    required_air_cols = ["petrol_nox", "diesel_nox", "petrol_pm", "diesel_pm"]
+    missing_cols = [col for col in required_air_cols if col not in data_loader.air_emission.columns]
+    if missing_cols:
+        raise ValueError(f"Air emission DataFrame missing required columns: {missing_cols}")
+    
     petrol_nox = data_loader.air_emission.loc[year_index, "petrol_nox"]
     diesel_nox = data_loader.air_emission.loc[year_index, "diesel_nox"]
     petrol_pm = data_loader.air_emission.loc[year_index, "petrol_pm"]
