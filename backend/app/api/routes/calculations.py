@@ -111,6 +111,10 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
         else:
             # Process provided variables
             for frontend_key, vars_list in request.variables.traditionalModes.items():
+                # Skip empty arrays
+                if not vars_list or len(vars_list) == 0:
+                    continue
+                    
                 backend_key = trad_modes_mapping.get(frontend_key)
                 if backend_key is None:
                     # Handle activeTransport - split into cycling and walking
@@ -131,9 +135,9 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
                 else:
                     traditional_modes_dict[backend_key] = [v.dict() for v in vars_list]
             
-            # Fill in any missing modes with defaults
+            # Fill in any missing modes with defaults, or if mode exists but is empty
             for mode_key in ["private_car", "pt_road", "pt_rail", "cycling", "walking"]:
-                if mode_key not in traditional_modes_dict:
+                if mode_key not in traditional_modes_dict or len(traditional_modes_dict.get(mode_key, [])) == 0:
                     traditional_modes_dict[mode_key] = default_trad_modes[mode_key]
         
         # Default shared services variables (all zeros from original code)

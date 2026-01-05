@@ -146,9 +146,18 @@ def _prepare_nms_variables(
     
     var_nms_all = {}
     for var_name, var_data in shared_services_vars.items():
+        # Skip if var_data is empty or None
+        if not var_data or len(var_data) == 0:
+            continue
         # Map the key to the correct mode name
         mode_key = nms_key_mapping.get(var_name, var_name.replace("var_nms_", ""))
-        var_nms_all[mode_key] = pd.DataFrame(var_data)
+        try:
+            var_nms_all[mode_key] = pd.DataFrame(var_data)
+        except Exception as e:
+            # Log error but continue with other modes
+            import logging
+            logging.warning(f"Error creating DataFrame for {var_name}: {e}")
+            continue
     
     # Process each dataframe
     var_nms_inputs = {}
