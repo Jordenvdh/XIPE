@@ -1015,7 +1015,93 @@ export default function DashboardPage() {
 
         // Shared services variables (snake_case keys from backend).
         // Backend now returns defaults for all services even if not saved.
-        sharedServices: sharedServicesFromApi || {},
+        // Populate replacement percentages and trip distances from modal split
+        // (matching original Streamlit behavior where these come from dashboard)
+        sharedServices: (() => {
+          const populated = { ...sharedServicesFromApi };
+          
+          // Extract modal split values
+          const ms_pcar = modalSplit.privateCar.split;
+          const ms_road = modalSplit.publicTransport.road.split;
+          const ms_rail = modalSplit.publicTransport.rail.split;
+          const ms_cyc = modalSplit.activeModes.cycling.split;
+          const ms_walk = modalSplit.activeModes.walking.split;
+          
+          // Extract trip distances
+          const dist_pcar = modalSplit.privateCar.distance;
+          const dist_road = modalSplit.publicTransport.road.distance;
+          const dist_rail = modalSplit.publicTransport.rail.distance;
+          const dist_cyc = modalSplit.activeModes.cycling.distance;
+          const dist_walk = modalSplit.activeModes.walking.distance;
+          
+          // Update all shared services with modal split values
+          Object.keys(populated).forEach(serviceKey => {
+            if (!populated[serviceKey] || !Array.isArray(populated[serviceKey])) return;
+            
+            populated[serviceKey] = populated[serviceKey].map((varItem: any) => {
+              // Update replacement percentages
+              if (varItem.variable === 'Replaces private car by (%)') {
+                return { ...varItem, defaultValue: ms_pcar };
+              }
+              if (varItem.variable === 'Replaces PT road by (%)') {
+                return { ...varItem, defaultValue: ms_road };
+              }
+              if (varItem.variable === 'Replaces PT rail by (%)') {
+                return { ...varItem, defaultValue: ms_rail };
+              }
+              if (varItem.variable === 'Replaces cycling by (%)') {
+                return { ...varItem, defaultValue: ms_cyc };
+              }
+              if (varItem.variable === 'Replaces walking by (%)') {
+                return { ...varItem, defaultValue: ms_walk };
+              }
+              
+              // Update trip distances
+              // Special cases per original Streamlit code:
+              // - bike: car and PT distances = cycling distance
+              // - e_bike: car and PT distances = 1.5 * cycling distance
+              // - escooter: car and PT distances = cycling distance
+              // - Others: use actual modal split distances
+              if (varItem.variable === 'Average trip distance of the shared mode when replacing car (km)') {
+                if (serviceKey === 'bike' || serviceKey === 'e_scooter') {
+                  return { ...varItem, defaultValue: dist_cyc };
+                } else if (serviceKey === 'e_bike') {
+                  return { ...varItem, defaultValue: dist_cyc * 1.5 };
+                } else {
+                  return { ...varItem, defaultValue: dist_pcar };
+                }
+              }
+              if (varItem.variable === 'Average trip distance of the shared mode when replacing PT road (km)') {
+                if (serviceKey === 'bike' || serviceKey === 'e_scooter') {
+                  return { ...varItem, defaultValue: dist_cyc };
+                } else if (serviceKey === 'e_bike') {
+                  return { ...varItem, defaultValue: dist_cyc * 1.5 };
+                } else {
+                  return { ...varItem, defaultValue: dist_road };
+                }
+              }
+              if (varItem.variable === 'Average trip distance of the shared mode when replacing PT rail (km)') {
+                if (serviceKey === 'bike' || serviceKey === 'e_scooter') {
+                  return { ...varItem, defaultValue: dist_cyc };
+                } else if (serviceKey === 'e_bike') {
+                  return { ...varItem, defaultValue: dist_cyc * 1.5 };
+                } else {
+                  return { ...varItem, defaultValue: dist_rail };
+                }
+              }
+              if (varItem.variable === 'Average trip distance of the shared mode when replacing cycling (km)') {
+                return { ...varItem, defaultValue: dist_cyc };
+              }
+              if (varItem.variable === 'Average trip distance of the shared mode when replacing walking (km)') {
+                return { ...varItem, defaultValue: dist_walk };
+              }
+              
+              return varItem;
+            });
+          });
+          
+          return populated;
+        })(),
       };
 
       // Prepare calculation request

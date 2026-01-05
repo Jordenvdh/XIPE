@@ -172,9 +172,13 @@ def _prepare_nms_variables(
         df_new = df.copy()
         df_new["variable"] = df_new["variable"].str.strip()
         
-        # Use defaults if user input is zero
-        if df_new["userInput"].sum() == 0:
-            df_new["userInput"] = df_new["defaultValue"]
+        # Use defaults for each variable individually when user input is zero
+        # (matching original Streamlit behavior: np.where(df_new["user_input"] == 0, df_new["default"], df_new["user_input"]))
+        df_new["userInput"] = np.where(
+            (df_new["userInput"] == 0) | (df_new["userInput"].isna()),
+            df_new["defaultValue"],
+            df_new["userInput"]
+        )
         
         df_new = df_new.drop(columns=["defaultValue"])
         df_new = df_new.rename(columns={"userInput": name})
