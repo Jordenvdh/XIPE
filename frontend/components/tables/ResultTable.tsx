@@ -56,7 +56,7 @@ export default function ResultTable({
                       key={colIndex} 
                       className={`p-3 ${getCellColor(value)}`}
                     >
-                      {value.toFixed(1)}
+                      {value.toFixed(2)}
                     </td>
                   );
                 })}
