@@ -566,34 +566,29 @@ def _perform_calculations(
     df_calc.loc[len(df_calc)] = new_row
     
     # Calculate TTW CO2
-    # For ICE vehicles: use row 2 (TTW CO2 emissions)
-    # For EV vehicles: use row 5 (efficiency) * electricity emission factor = ev_emission_factor (row 19)
+    # Original code calculates ttw_ice_co2 for all vehicles using ICE emission factor
+    # For EVs, the TTW emission factor should be 0 (no tailpipe emissions)
+    # So we can use the ICE emission factor for all, and EVs will naturally have 0 where their emission factor is 0
     calc_row_numeric = pd.to_numeric(df_calc.iloc[18][numeric_cols], errors='coerce').fillna(0)
     nms_row_numeric_ice = pd.to_numeric(df_var_nms.iloc[2][numeric_cols], errors='coerce').fillna(0)
     ttw_ice_co2 = (calc_row_numeric * nms_row_numeric_ice) / 1000
-    
-    # TTW for EVs uses the ev_emission_factor (already calculated from efficiency * electricity CO2)
-    calc_row_numeric_18 = pd.to_numeric(df_calc.iloc[18][numeric_cols], errors='coerce').fillna(0)
-    calc_row_numeric_19 = pd.to_numeric(df_calc.iloc[19][numeric_cols], errors='coerce').fillna(0)
-    ttw_ev_co2 = (calc_row_numeric_18 * calc_row_numeric_19) / 1000
-    
-    # Combine ICE and EV TTW: use EV where it's non-zero, otherwise use ICE
-    ttw_ev_co2 = ttw_ev_co2.astype("float64")
-    ttw_ice_co2 = ttw_ice_co2.astype("float64")
-    ttw_co2 = ttw_ev_co2.where(ttw_ev_co2.ne(0.0)).fillna(ttw_ice_co2).infer_objects(copy=False)
-    new_row = pd.concat([pd.Series({"variable": "ttw_co2"}), ttw_co2])
+    # Store ttw_co2 directly (matching original code line 195)
+    new_row = pd.concat([pd.Series({"variable": "ttw_co2"}), ttw_ice_co2])
     df_calc.loc[len(df_calc)] = new_row
     
     # Calculate WTT CO2
+    # For ICE: WTT = TTW * multiplier
     wtt_factor_val = float(pd.to_numeric(df_var_gen.iloc[1, 1], errors='coerce'))
     wtt_multiplier_val = ((1 / (1 - (wtt_factor_val / 100))) - 1)
     wtt_ice_co2 = ttw_ice_co2 * wtt_multiplier_val
-    # WTT for EVs uses the same ev_emission_factor as TTW
+    # For EV: WTT uses ev_emission_factor (electricity generation emissions)
+    calc_row_numeric_18 = pd.to_numeric(df_calc.iloc[18][numeric_cols], errors='coerce').fillna(0)
+    calc_row_numeric_19 = pd.to_numeric(df_calc.iloc[19][numeric_cols], errors='coerce').fillna(0)
     wtt_ev_co2 = (calc_row_numeric_18 * calc_row_numeric_19) / 1000
     
+    # Combine WTT: use EV where it's non-zero, otherwise use ICE (matching original code line 207)
     wtt_ev_co2 = wtt_ev_co2.astype("float64")
     wtt_ice_co2 = wtt_ice_co2.astype("float64")
-    
     wtt_co2 = wtt_ev_co2.where(wtt_ev_co2.ne(0.0)).fillna(wtt_ice_co2).infer_objects(copy=False)
     new_row = pd.concat([pd.Series({"variable": "wtt_co2"}), wtt_co2])
     df_calc.loc[len(df_calc)] = new_row
