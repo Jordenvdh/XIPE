@@ -694,7 +694,8 @@ def _format_results(
     # CO2 totals
     co2_per_mode = [per_mode[mode]["total"] for mode in NMS_TYPES]
     co2_kg_per_day = sum(co2_per_mode)
-    co2_ton_per_year = co2_per_day / 1000 * 365.25
+    # Convert kg/day -> ton/year (1 ton = 1000 kg)
+    co2_ton_per_year = co2_kg_per_day / 1000 * 365.25
     co2_ton_per_year_per_1000 = co2_ton_per_year / inhabitants * 1000
     
     # Air quality totals
