@@ -55,7 +55,15 @@ export default function SharedServicesVariablesPage() {
         setError(null);
         
         const data = await getSharedServicesVariables();
-        setSharedServices(data || {});
+        
+        // Map backend keys (snake_case) to frontend keys (camelCase)
+        // Include all services, even if empty (backend should return defaults)
+        const mappedData: Record<string, VariableRow[]> = {};
+        for (const [frontendKey, backendKey] of Object.entries(SERVICE_MAPPING)) {
+          mappedData[frontendKey] = data[backendKey] || [];
+        }
+        
+        setSharedServices(mappedData);
       } catch (err) {
         console.error('Error loading shared services variables:', err);
         setError('Failed to load variables. Please try again later.');
