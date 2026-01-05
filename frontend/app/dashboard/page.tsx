@@ -972,6 +972,57 @@ export default function DashboardPage() {
     try {
       // Ensure variables are properly structured
       // If variables are empty, use defaults from context
+      
+      // Convert traditional modes keys from snake_case to camelCase for backend
+      const convertTraditionalModes = (modes: Record<string, any>): Record<string, any> => {
+        const converted: Record<string, any> = {};
+        // Map snake_case to camelCase
+        const keyMapping: Record<string, string> = {
+          'private_car': 'privateCar',
+          'pt_road': 'ptRoad',
+          'pt_rail': 'ptRail',
+          'active_transport': 'activeTransport',
+          'cycling': 'cycling',
+          'walking': 'walking',
+        };
+        
+        // Also handle already camelCase keys
+        Object.keys(modes).forEach(key => {
+          const camelKey = keyMapping[key] || key;
+          // Only include if it's a valid key
+          if (['privateCar', 'ptRoad', 'ptRail', 'activeTransport', 'cycling', 'walking'].includes(camelKey)) {
+            converted[camelKey] = modes[key];
+          }
+        });
+        
+        return converted;
+      };
+      
+      // Shared services: backend expects snake_case keys (ice_car, ice_moped, etc.)
+      // Frontend may have camelCase keys, so convert them back to snake_case
+      const convertSharedServices = (services: Record<string, any>): Record<string, any> => {
+        const converted: Record<string, any> = {};
+        // Map camelCase back to snake_case (backend expects snake_case)
+        const keyMapping: Record<string, string> = {
+          'iceCar': 'ice_car',
+          'iceMoped': 'ice_moped',
+          'bike': 'bike',
+          'eCar': 'e_car',
+          'eBike': 'e_bike',
+          'eMoped': 'e_moped',
+          'eScooter': 'e_scooter',
+          'other': 'other',
+          'eOther': 'e_other',
+        };
+        
+        Object.keys(services).forEach(key => {
+          const snakeKey = keyMapping[key] || key;
+          converted[snakeKey] = services[key];
+        });
+        
+        return converted;
+      };
+      
       const requestVariables = {
         general: variables.general.length > 0 
           ? variables.general 
@@ -984,10 +1035,10 @@ export default function DashboardPage() {
               { variable: 'Percentage of electric cars in the current fleet (%)', userInput: 0, defaultValue: 7.8 },
             ],
         traditionalModes: Object.keys(variables.traditionalModes).length > 0 
-          ? variables.traditionalModes 
+          ? convertTraditionalModes(variables.traditionalModes)
           : {},
         sharedServices: Object.keys(variables.sharedServices).length > 0 
-          ? variables.sharedServices 
+          ? convertSharedServices(variables.sharedServices)
           : {},
       };
 
