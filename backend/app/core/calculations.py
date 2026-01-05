@@ -152,7 +152,14 @@ def _prepare_nms_variables(
         # Map the key to the correct mode name
         mode_key = nms_key_mapping.get(var_name, var_name.replace("var_nms_", ""))
         try:
-            var_nms_all[mode_key] = pd.DataFrame(var_data)
+            df = pd.DataFrame(var_data)
+            # Validate that DataFrame has required columns
+            required_cols = ["variable", "userInput", "defaultValue"]
+            if not all(col in df.columns for col in required_cols):
+                import logging
+                logging.warning(f"DataFrame for {var_name} missing required columns. Has: {list(df.columns)}, needs: {required_cols}")
+                continue
+            var_nms_all[mode_key] = df
         except Exception as e:
             # Log error but continue with other modes
             import logging
@@ -232,8 +239,35 @@ def _prepare_trad_variables(trad_vars: Dict[str, Any]) -> pd.DataFrame:
     # Process each traditional mode
     var_trad_all = {}
     for mode_type in TRAD_TYPES:
-        if mode_type in trad_vars:
-            var_trad_all[mode_type] = pd.DataFrame(trad_vars[mode_type])
+        if mode_type in trad_vars and trad_vars[mode_type] and len(trad_vars[mode_type]) > 0:
+            try:
+                df = pd.DataFrame(trad_vars[mode_type])
+                # Validate that DataFrame has required columns
+                required_cols = ["variable", "userInput", "defaultValue"]
+                if not all(col in df.columns for col in required_cols):
+                    import logging
+                    logging.warning(f"Traditional mode {mode_type} DataFrame missing required columns. Has: {list(df.columns)}, needs: {required_cols}")
+                    continue
+                # Ensure DataFrame is not empty
+                if len(df) == 0:
+                    import logging
+                    logging.warning(f"Traditional mode {mode_type} DataFrame is empty")
+                    continue
+                var_trad_all[mode_type] = df
+            except Exception as e:
+                import logging
+                logging.warning(f"Error creating DataFrame for traditional mode {mode_type}: {e}")
+                continue
+    
+    # Ensure all required modes are present (raise error if critical ones are missing)
+    if len(var_trad_all) == 0:
+        raise ValueError("No traditional modes variables provided. At least one mode must have variables.")
+    
+    # Check for critical modes
+    critical_modes = ["pt_road", "pt_rail", "cycling", "walking"]
+    missing_critical = [m for m in critical_modes if m not in var_trad_all]
+    if missing_critical:
+        raise ValueError(f"Missing required traditional modes: {missing_critical}")
     
     # Process dataframes
     var_trad_inputs = {}

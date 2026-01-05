@@ -364,11 +364,13 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
         security_logger.error(
             f"Calculation error: country={request.country}, "
             f"error_type={type(e).__name__}, "
-            f"error_message={str(e)[:200]}"
+            f"error_message={str(e)[:200]}, "
+            f"traceback={error_traceback[:500]}"
         )
-        # Return generic error to client
+        # Return generic error to client (but include error type for debugging in development)
+        error_detail = f"An error occurred during calculation: {type(e).__name__}"
         raise HTTPException(
             status_code=500, 
-            detail="An error occurred during calculation. Please try again later."
+            detail=error_detail
         )
 
