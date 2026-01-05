@@ -573,7 +573,9 @@ def _perform_calculations(
     nms_row_numeric_ice = pd.to_numeric(df_var_nms.iloc[2][numeric_cols], errors='coerce').fillna(0)
     ttw_ice_co2 = (calc_row_numeric * nms_row_numeric_ice) / 1000
     # Store ttw_co2 directly (matching original code line 195)
-    new_row = pd.concat([pd.Series({"variable": "ttw_co2"}), ttw_ice_co2])
+    # Also keep as variable for later use
+    ttw_co2 = ttw_ice_co2
+    new_row = pd.concat([pd.Series({"variable": "ttw_co2"}), ttw_co2])
     df_calc.loc[len(df_calc)] = new_row
     
     # Calculate WTT CO2
