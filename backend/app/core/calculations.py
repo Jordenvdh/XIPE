@@ -434,6 +434,12 @@ def _perform_calculations(
     # Ensure we're working with numeric data only (exclude 'variable' column)
     numeric_cols = [col for col in column_names if col != "variable"]
     
+    # Validate that all expected columns exist
+    expected_columns = ["ICEcar", "ICEmoped", "bike", "ecar", "ebike", "emoped", "escooter", "other", "eother"]
+    missing_cols = [col for col in expected_columns if col not in column_names]
+    if missing_cols:
+        raise ValueError(f"df_var_nms missing required columns: {missing_cols}")
+    
     # Calculate total trips
     # Get numeric columns only (skip 'variable' column which is at index 0)
     row0_numeric = df_var_nms.iloc[0][numeric_cols]
