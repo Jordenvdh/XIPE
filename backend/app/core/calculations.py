@@ -212,6 +212,21 @@ def _prepare_nms_variables(
     
     df_var_nms = pd.concat([df_numbers_nms, df_var_nms], ignore_index=True)
     
+    # Ensure df_var_nms has all required rows (at least 17 rows for calculations)
+    # Row 0: Number of vehicles
+    # Rows 1-6: Variable rows from template
+    # Rows 7-11: Replaced trips (accessed in _perform_calculations)
+    # Rows 12-16: Trip distances (accessed in _perform_calculations)
+    required_rows = 17
+    if len(df_var_nms) < required_rows:
+        # Add missing rows with zeros
+        missing_rows = required_rows - len(df_var_nms)
+        for i in range(missing_rows):
+            new_row = {"variable": f"placeholder_{i}"}
+            for col in expected_columns:
+                new_row[col] = 0.0
+            df_var_nms = pd.concat([df_var_nms, pd.DataFrame([new_row])], ignore_index=True)
+    
     # Convert all numeric columns to numeric type (excluding 'variable' column)
     numeric_cols = [col for col in df_var_nms.columns if col != "variable"]
     for col in numeric_cols:
@@ -433,7 +448,13 @@ def _perform_calculations(
     df_calc.loc[len(df_calc)] = new_row
     
     # Calculate replaced trips
+    # Ensure df_var_nms has enough rows (at least 12 rows: 0=vehicles, 1-6=variables, 7-11=replacement %)
+    if len(df_var_nms) < 12:
+        raise ValueError(f"df_var_nms has only {len(df_var_nms)} rows, expected at least 12")
+    
     for i, name in zip(range(7, 12), TRAD_TYPES):
+        if i >= len(df_var_nms):
+            raise ValueError(f"Cannot access row {i} in df_var_nms (has {len(df_var_nms)} rows)")
         calc_row_numeric = pd.to_numeric(df_calc.iloc[0][numeric_cols], errors='coerce').fillna(0)
         nms_row_numeric = pd.to_numeric(df_var_nms.iloc[i][numeric_cols], errors='coerce').fillna(0)
         result = calc_row_numeric * (nms_row_numeric / 100)
@@ -441,9 +462,16 @@ def _perform_calculations(
         df_calc.loc[len(df_calc)] = new_row
     
     # Calculate decreased mileage
+    # Ensure df_var_nms has enough rows (at least 17 rows: need rows 12-16 for trip distances)
+    if len(df_var_nms) < 17:
+        raise ValueError(f"df_var_nms has only {len(df_var_nms)} rows, expected at least 17")
+    
     for i, name in zip(range(0, 5), TRAD_TYPES):
+        row_idx = i + 12
+        if row_idx >= len(df_var_nms):
+            raise ValueError(f"Cannot access row {row_idx} in df_var_nms (has {len(df_var_nms)} rows)")
         calc_row_numeric = pd.to_numeric(df_calc.iloc[i + 1][numeric_cols], errors='coerce').fillna(0)
-        nms_row_numeric = pd.to_numeric(df_var_nms.iloc[i + 12][numeric_cols], errors='coerce').fillna(0)
+        nms_row_numeric = pd.to_numeric(df_var_nms.iloc[row_idx][numeric_cols], errors='coerce').fillna(0)
         result = calc_row_numeric * nms_row_numeric * -1
         new_row = pd.concat([pd.Series({"variable": f"decreased_distance_{name}"}), result])
         df_calc.loc[len(df_calc)] = new_row
