@@ -351,6 +351,8 @@ class DataLoader:
         
         # Get electricity CO2 intensity from derived dataset
         # Value in gCO2/kWh for electricity generation in this country
+        if country not in self.elec_co2_country.columns:
+            raise ValueError(f"Country '{country}' not found in electricity CO2 data")
         elec_co2 = self.elec_co2_country.loc[0, country]
         
         # Return structured data dictionary

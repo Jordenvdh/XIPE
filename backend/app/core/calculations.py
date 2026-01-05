@@ -371,6 +371,10 @@ def _update_defaults_from_dashboard(
     max_year = year_list.max()
     year_index = int(max_year - car_year)
     
+    # Check if country exists in car_co2 DataFrame
+    if country not in data_loader.car_co2.columns:
+        raise ValueError(f"Country '{country}' not found in car CO2 emissions data")
+    
     default_co2_car = data_loader.car_co2.loc[year_index, country]
     
     # Apply NEDC/WLTP correction factors
