@@ -507,11 +507,21 @@ def _perform_calculations(
     # Check if df_var_trad has enough rows and columns
     if len(df_var_trad) <= 3 or len(df_var_trad.columns) <= 3:
         raise ValueError(f"df_var_trad has incorrect shape: {df_var_trad.shape}. Expected at least 4 rows and 4 columns.")
-    trad_val = pd.to_numeric(df_var_trad.iloc[3, 3], errors='coerce')
+    # Use label-based access for the traditional mode column (avoid relying on column order)
+    if "pt_rail" not in df_var_trad.columns:
+        raise ValueError(f"df_var_trad missing expected column 'pt_rail'. Columns: {df_var_trad.columns.tolist()}")
+    trad_val = pd.to_numeric(df_var_trad.at[3, "pt_rail"], errors='coerce')
     emission_factor_rail = float(gen_val) * float(trad_val)
     
     # Calculate CO2 emission TTW
-    co2_factors_raw = df_var_trad.iloc[0][numeric_cols].tolist()
+    # IMPORTANT: df_var_trad columns are traditional modes (private_car, pt_road, ...),
+    # while numeric_cols are NMS columns (ICEcar, bike, ...). Never mix them.
+    trad_cols = TRAD_TYPES
+    missing_trad_cols = [c for c in trad_cols if c not in df_var_trad.columns]
+    if missing_trad_cols:
+        raise ValueError(f"df_var_trad missing required traditional mode columns: {missing_trad_cols}")
+
+    co2_factors_raw = df_var_trad.iloc[0][trad_cols].tolist()
     co2_factors = [pd.to_numeric(val, errors='coerce') for val in co2_factors_raw]
     co2_factors[2] = emission_factor_rail
     
@@ -609,7 +619,7 @@ def _perform_calculations(
     # Calculate CO2 LCA phase
     decreased_distance_df = df_calc.iloc[6:11][numeric_cols].reset_index(drop=True)
     decreased_distance_df = decreased_distance_df.apply(pd.to_numeric, errors='coerce').fillna(0)
-    emission_fact_lca_df = df_var_trad.iloc[4][numeric_cols].reset_index(drop=True)
+    emission_fact_lca_df = df_var_trad.iloc[4][trad_cols].reset_index(drop=True)
     emission_fact_lca_df = pd.to_numeric(emission_fact_lca_df, errors='coerce').fillna(0)
     
     avg_co2_lca = decreased_distance_df.mul((emission_fact_lca_df / 1000), axis=0)
@@ -621,14 +631,14 @@ def _perform_calculations(
     avg_co2_lca.loc[len(avg_co2_lca)] = avg_co2_lca_nms
     
     # Calculate NOx and PM
-    emission_fact_nox_df = df_var_trad.iloc[1][numeric_cols].reset_index(drop=True)
+    emission_fact_nox_df = df_var_trad.iloc[1][trad_cols].reset_index(drop=True)
     emission_fact_nox_df = pd.to_numeric(emission_fact_nox_df, errors='coerce').fillna(0)
     avg_nox = decreased_distance_df.mul((emission_fact_nox_df / 1000), axis=0)
     emission_fact_nox_nms = pd.to_numeric(df_var_nms.iloc[3][numeric_cols], errors='coerce').fillna(0)
     avg_nox_nms = (emission_fact_nox_nms.values * total_km_travelled.values) / 1000
     avg_nox.loc[len(avg_nox)] = avg_nox_nms
     
-    emission_fact_pm_df = df_var_trad.iloc[2][numeric_cols].reset_index(drop=True)
+    emission_fact_pm_df = df_var_trad.iloc[2][trad_cols].reset_index(drop=True)
     emission_fact_pm_df = pd.to_numeric(emission_fact_pm_df, errors='coerce').fillna(0)
     avg_pm = decreased_distance_df.mul((emission_fact_pm_df / 1000), axis=0)
     emission_fact_pm_nms = pd.to_numeric(df_var_nms.iloc[4][numeric_cols], errors='coerce').fillna(0)
