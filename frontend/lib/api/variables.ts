@@ -37,3 +37,24 @@ export async function getSharedServicesVariables(): Promise<Record<string, Varia
   const response = await apiClient.get<Record<string, VariableRow[]>>('/api/variables/shared-services');
   return response.data;
 }
+
+/**
+ * Save general variables
+ */
+export async function saveGeneralVariables(variables: GeneralVariables): Promise<void> {
+  await apiClient.post('/api/variables/general', variables);
+}
+
+/**
+ * Save traditional mode variables
+ */
+export async function saveTraditionalModeVariables(mode: string, variables: VariableRow[]): Promise<void> {
+  await apiClient.post(`/api/variables/traditional-modes/${mode}`, variables);
+}
+
+/**
+ * Save shared service variables
+ */
+export async function saveSharedServiceVariables(service: string, variables: VariableRow[]): Promise<void> {
+  await apiClient.post(`/api/variables/shared-services/${service}`, variables);
+}
