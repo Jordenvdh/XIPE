@@ -313,7 +313,7 @@ async def get_shared_services_variables():
             {"variable": "Average Tank-to-Wheel CO2 emissions (g/km)", "userInput": 0.0, "defaultValue": 0.0},
             {"variable": "Average NOx emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
             {"variable": "Average PM emissions (mg/km)", "userInput": 0.0, "defaultValue": 0.0},
-            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.001},
+            {"variable": "Emission factor for life-cycle phases excluding use phase (gCO2/km)", "userInput": 0.0, "defaultValue": 0.0},
             {"variable": "Replaces private car by (%)", "userInput": 0.0, "defaultValue": 0.0},
             {"variable": "Replaces PT road by (%)", "userInput": 0.0, "defaultValue": 0.0},
             {"variable": "Replaces PT rail by (%)", "userInput": 0.0, "defaultValue": 0.0},
