@@ -5,13 +5,8 @@ import { Providers } from "@/components/providers/Providers";
 export const metadata: Metadata = {
   title: "XIPE Model - Cross Impact Performance Emissions",
   description: "The XIPE model estimates the effect shared mobility has on CO2 and air pollution emissions in a city or region.",
-  // Favicon is automatically handled by Next.js from app/favicon.ico
-  // Also available at /images/favicon.ico for explicit reference
-  icons: {
-    icon: "/images/favicon.ico",
-    shortcut: "/images/favicon.ico",
-    apple: "/images/favicon.ico",
-  },
+  // Favicon is automatically served by Next.js from app/favicon.ico at /favicon.ico
+  // No need to explicitly configure it
 };
 
 export default function RootLayout({
