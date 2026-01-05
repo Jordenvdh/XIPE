@@ -1124,15 +1124,9 @@ export default function DashboardPage() {
         variables: requestVariables,
       };
 
-      // Log request for debugging
-      console.log('Calculation request:', JSON.stringify(request, null, 2));
-      
       const calculatedResults = await calculateEmissions(request);
       setResults(calculatedResults);
     } catch (err: any) {
-      console.error('Calculation error:', err);
-      console.error('Error response:', err.response?.data);
-      console.error('Error status:', err.response?.status);
       // Extract detailed error message from response
       let errorMessage = 'Failed to calculate emissions';
       if (err.response?.data) {

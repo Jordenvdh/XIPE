@@ -13,11 +13,11 @@ interface ResultTableProps {
 
 function getCellColor(value: number): string {
   if (value < 0) {
-    return 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-300'; // Reduction (green)
+    return 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 font-semibold'; // Reduction (bright green)
   } else if (value > 0) {
-    return 'bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-300'; // Increase (red)
+    return 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 font-semibold'; // Increase (bright red)
   } else {
-    return 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-800 dark:text-yellow-300'; // No change (yellow)
+    return 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 font-semibold'; // No change (bright yellow)
   }
 }
 
