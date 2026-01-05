@@ -974,6 +974,7 @@ export default function DashboardPage() {
       // If variables are empty, use defaults from context
       
       // Convert traditional modes keys from snake_case to camelCase for backend
+      // Only include keys with non-empty arrays (backend will use defaults for missing keys)
       const convertTraditionalModes = (modes: Record<string, any>): Record<string, any> => {
         const converted: Record<string, any> = {};
         // Map snake_case to camelCase
@@ -989,9 +990,13 @@ export default function DashboardPage() {
         // Also handle already camelCase keys
         Object.keys(modes).forEach(key => {
           const camelKey = keyMapping[key] || key;
-          // Only include if it's a valid key
+          // Only include if it's a valid key AND has non-empty data
           if (['privateCar', 'ptRoad', 'ptRail', 'activeTransport', 'cycling', 'walking'].includes(camelKey)) {
-            converted[camelKey] = modes[key];
+            const data = modes[key];
+            // Only include if data exists and is not empty
+            if (data && Array.isArray(data) && data.length > 0) {
+              converted[camelKey] = data;
+            }
           }
         });
         
@@ -1000,6 +1005,7 @@ export default function DashboardPage() {
       
       // Shared services: backend expects snake_case keys (ice_car, ice_moped, etc.)
       // Frontend may have camelCase keys, so convert them back to snake_case
+      // Only include keys with non-empty arrays (backend will use defaults for missing keys)
       const convertSharedServices = (services: Record<string, any>): Record<string, any> => {
         const converted: Record<string, any> = {};
         // Map camelCase back to snake_case (backend expects snake_case)
@@ -1017,7 +1023,11 @@ export default function DashboardPage() {
         
         Object.keys(services).forEach(key => {
           const snakeKey = keyMapping[key] || key;
-          converted[snakeKey] = services[key];
+          const data = services[key];
+          // Only include if data exists and is not empty
+          if (data && Array.isArray(data) && data.length > 0) {
+            converted[snakeKey] = data;
+          }
         });
         
         return converted;
@@ -1034,12 +1044,10 @@ export default function DashboardPage() {
               { variable: 'Percentage of diesel cars in the current fleet (%)', userInput: 0, defaultValue: 49.9 },
               { variable: 'Percentage of electric cars in the current fleet (%)', userInput: 0, defaultValue: 7.8 },
             ],
-        traditionalModes: Object.keys(variables.traditionalModes).length > 0 
-          ? convertTraditionalModes(variables.traditionalModes)
-          : {},
-        sharedServices: Object.keys(variables.sharedServices).length > 0 
-          ? convertSharedServices(variables.sharedServices)
-          : {},
+        // Send traditionalModes - only include keys with data (backend will use defaults for missing keys)
+        traditionalModes: convertTraditionalModes(variables.traditionalModes),
+        // Send sharedServices - only include keys with data (backend will use defaults for missing keys)
+        sharedServices: convertSharedServices(variables.sharedServices),
       };
 
       // Prepare calculation request
@@ -1062,10 +1070,15 @@ export default function DashboardPage() {
         variables: requestVariables,
       };
 
+      // Log request for debugging
+      console.log('Calculation request:', JSON.stringify(request, null, 2));
+      
       const calculatedResults = await calculateEmissions(request);
       setResults(calculatedResults);
     } catch (err: any) {
       console.error('Calculation error:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
       // Extract detailed error message from response
       let errorMessage = 'Failed to calculate emissions';
       if (err.response?.data) {
@@ -1080,7 +1093,11 @@ export default function DashboardPage() {
           } else {
             errorMessage = errorData.detail;
           }
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
         }
+      } else if (err.message) {
+        errorMessage = err.message;
       }
       setError(errorMessage);
     } finally {
