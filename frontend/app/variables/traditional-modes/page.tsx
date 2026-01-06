@@ -70,7 +70,7 @@ export default function TraditionalModesVariablesPage() {
         ]);
         
         // Merge general variables with country-specific defaults
-        // Similar to private car: preserve userInput if user explicitly entered something, otherwise use country-specific defaultValue
+        // Similar to private car: preserve userInput if user explicitly entered something, otherwise set to 0
         let mergedGeneralVars: VariableRow[] = [];
         if (generalDefaults.length > 0) {
           const savedGeneralVars = generalData.variables || [];
@@ -80,7 +80,7 @@ export default function TraditionalModesVariablesPage() {
             );
             // If user has saved a value that's different from the saved defaultValue,
             // it means they explicitly entered something, so preserve it
-            // Otherwise, use the new country-specific defaultValue
+            // Otherwise, set userInput to 0 (no user input)
             const userExplicitlyEntered = savedVar && 
               savedVar.userInput !== 0 && 
               savedVar.userInput !== savedVar.defaultValue;
@@ -89,7 +89,7 @@ export default function TraditionalModesVariablesPage() {
               ...defaultVar, // This includes the new country-specific defaultValue
               userInput: userExplicitlyEntered 
                 ? savedVar.userInput 
-                : defaultVar.defaultValue, // Use new defaultValue if no explicit user input
+                : 0, // Set to 0 if no explicit user input
             };
           });
         } else {
@@ -113,7 +113,7 @@ export default function TraditionalModesVariablesPage() {
             );
             // If user has saved a value that's different from the saved defaultValue,
             // it means they explicitly entered something, so preserve it
-            // Otherwise, use the new country-specific defaultValue
+            // Otherwise, set userInput to 0 (no user input)
             const userExplicitlyEntered = savedVar && 
               savedVar.userInput !== 0 && 
               savedVar.userInput !== savedVar.defaultValue;
@@ -122,7 +122,7 @@ export default function TraditionalModesVariablesPage() {
               ...defaultVar, // This includes the new country-specific defaultValue
               userInput: userExplicitlyEntered 
                 ? savedVar.userInput 
-                : defaultVar.defaultValue, // Use new defaultValue if no explicit user input
+                : 0, // Set to 0 if no explicit user input
             };
           });
         } else {
