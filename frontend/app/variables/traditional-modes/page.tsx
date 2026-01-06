@@ -71,22 +71,28 @@ export default function TraditionalModesVariablesPage() {
         
         // Private car defaults come from country-specific endpoint
         // Always use country-specific defaults when available to ensure they update when country changes
-        // Merge with saved values: preserve userInput if user has entered values, otherwise use defaultValue
+        // Merge with saved values: preserve userInput only if user explicitly entered something different
         let mergedPrivateCar: VariableRow[] = [];
         if (privateCarDefaults.length > 0) {
-          // We have country-specific defaults - use them and merge with saved userInput if exists
+          // We have country-specific defaults - always use them for defaultValue
+          // Merge with saved userInput: only preserve if user explicitly entered something
           const savedPrivateCar = traditionalData.privateCar || [];
           mergedPrivateCar = privateCarDefaults.map((defaultVar) => {
             const savedVar = savedPrivateCar.find(
               v => v.variable === defaultVar.variable
             );
-            // Preserve userInput from saved values if user has entered something (non-zero)
-            // Otherwise use the new country-specific defaultValue
+            // If user has saved a value that's different from the saved defaultValue,
+            // it means they explicitly entered something, so preserve it
+            // Otherwise, use the new country-specific defaultValue
+            const userExplicitlyEntered = savedVar && 
+              savedVar.userInput !== 0 && 
+              savedVar.userInput !== savedVar.defaultValue;
+            
             return {
-              ...defaultVar,
-              userInput: savedVar && savedVar.userInput !== 0 && savedVar.userInput !== defaultVar.defaultValue
+              ...defaultVar, // This includes the new country-specific defaultValue
+              userInput: userExplicitlyEntered 
                 ? savedVar.userInput 
-                : defaultVar.defaultValue,
+                : defaultVar.defaultValue, // Use new defaultValue if no explicit user input
             };
           });
         } else {

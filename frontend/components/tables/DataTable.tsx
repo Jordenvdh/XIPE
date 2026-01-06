@@ -66,8 +66,7 @@ export default function DataTable({
 
   // Keep local state in sync when parent-provided variables change,
   // but preserve userInput values that the user has entered.
-  // Only update if the variables structure actually changed (new variables added/removed)
-  // or if userInput values in props are more recent (non-zero vs zero).
+  // Always update defaultValue from props to ensure country-specific defaults update correctly.
   useEffect(() => {
     setEditedVariables((current) => {
       // If variable count changed, use new props
@@ -75,18 +74,20 @@ export default function DataTable({
         return variables;
       }
       
-      // Otherwise, merge: keep current userInput if non-zero, otherwise use props
+      // Otherwise, merge: keep current userInput if non-zero, but always update defaultValue
       return variables.map((propVar, index) => {
         const currentVar = current[index];
-        // If current has a non-zero userInput, preserve it unless props also has a non-zero userInput
-        if (currentVar && currentVar.userInput !== 0) {
-          // Keep current userInput unless props has a different non-zero value
+        // If current has a non-zero userInput, preserve it unless props also has a different non-zero userInput
+        if (currentVar && currentVar.userInput !== 0 && currentVar.userInput !== currentVar.defaultValue) {
+          // User has explicitly entered something - preserve it, but update defaultValue
           return {
-            ...propVar,
-            userInput: propVar.userInput !== 0 ? propVar.userInput : currentVar.userInput,
+            ...propVar, // This includes the updated defaultValue
+            userInput: propVar.userInput !== 0 && propVar.userInput !== propVar.defaultValue 
+              ? propVar.userInput 
+              : currentVar.userInput, // Preserve explicit user input
           };
         }
-        // Otherwise use props as-is
+        // Otherwise use props as-is (includes updated defaultValue)
         return propVar;
       });
     });
