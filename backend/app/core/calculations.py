@@ -662,24 +662,33 @@ def _format_results(
     """
     Format calculation results for API response
     """
+    # Map mode names to DataFrame column patterns
+    # Note: "e-Scooter" -> "escooter" (remove hyphen, lowercase)
+    def mode_to_column_pattern(mode: str) -> str:
+        # Remove hyphens and convert to lowercase for matching DataFrame columns
+        return mode.lower().replace("-", "")
+    
     # Per-mode results
     per_mode = {}
     for mode in NMS_TYPES:
+        # Get column pattern for this mode (e.g., "e-Scooter" -> "escooter")
+        column_pattern = mode_to_column_pattern(mode)
+        
         # CO2 use phase
-        sum_co2 = df_results.filter(regex=mode.lower()).sum(axis=1)
+        sum_co2 = df_results.filter(regex=column_pattern).sum(axis=1)
         ttw_total = sum_co2.iloc[0] + sum_co2.iloc[2]
         wtt_total = sum_co2.iloc[1] + sum_co2.iloc[3]
         
         # CO2 LCA
-        sum_lca = avg_co2_lca.filter(regex=mode.lower()).sum(axis=1)
+        sum_lca = avg_co2_lca.filter(regex=column_pattern).sum(axis=1)
         lca_total = sum_lca.sum()
         
         # NOx
-        sum_nox = avg_nox.filter(regex=mode.lower()).sum(axis=1)
+        sum_nox = avg_nox.filter(regex=column_pattern).sum(axis=1)
         nox_total = sum_nox.sum()
         
         # PM
-        sum_pm = avg_pm.filter(regex=mode.lower()).sum(axis=1)
+        sum_pm = avg_pm.filter(regex=column_pattern).sum(axis=1)
         pm_total = sum_pm.sum()
         
         per_mode[mode] = {
