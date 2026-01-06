@@ -183,8 +183,8 @@ export default function SharedServicesVariablesPage() {
     );
   }
 
-  // Get all service keys, including those that might not have variables yet
-  const allServiceKeys = Object.keys(SERVICE_MAPPING);
+  // Get all service keys in original order: iceCar, iceMoped, bike, eCar, eBike, eMoped, eScooter, other, eOther
+  const allServiceKeys = ['iceCar', 'iceMoped', 'bike', 'eCar', 'eBike', 'eMoped', 'eScooter', 'other', 'eOther'];
 
   return (
     <Layout>
@@ -224,7 +224,8 @@ export default function SharedServicesVariablesPage() {
           </p>
         </div>
 
-        {/* Render tables for each service */}
+        {/* Render tables for each service in original order */}
+        {/* Original order: iceCar, iceMoped, bike, eCar, eBike, eMoped, eScooter, other, eOther */}
         {allServiceKeys.map((serviceKey) => {
           const variables = sharedServices[serviceKey] || [];
           const displayName = SERVICE_NAMES[serviceKey] || serviceKey;

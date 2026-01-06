@@ -423,7 +423,24 @@ export default function DashboardPage() {
       // Shared services: merge saved with defaults and populate from modal split
       // Use the same logic as handleCalculate to ensure PDF shows values actually used
       const allSharedServices: Record<string, Array<{ variable: string; userInput: number; defaultValue: number }>> = (() => {
-        const populated = { ...sharedServicesFromApi };
+        // Start with defaults to ensure all services exist
+        const populated: Record<string, Array<{ variable: string; userInput: number; defaultValue: number }>> = {};
+        
+        // First, populate from API (which includes saved values)
+        // Deep copy objects to avoid reference issues
+        Object.keys(sharedServicesFromApi).forEach(key => {
+          if (sharedServicesFromApi[key] && Array.isArray(sharedServicesFromApi[key]) && sharedServicesFromApi[key].length > 0) {
+            populated[key] = sharedServicesFromApi[key].map(item => ({ ...item }));
+          }
+        });
+        
+        // Then, ensure all services from defaults exist (fill in missing ones)
+        // Deep copy objects to avoid reference issues
+        Object.keys(defaultSharedServices).forEach(key => {
+          if (!populated[key] || !Array.isArray(populated[key]) || populated[key].length === 0) {
+            populated[key] = defaultSharedServices[key].map(item => ({ ...item }));
+          }
+        });
         
         // Extract modal split values
         const ms_pcar = modalSplit.privateCar.split;
@@ -505,7 +522,7 @@ export default function DashboardPage() {
           });
         });
         
-        // Also check variables state for saved values and merge
+        // Also check variables state for saved values and merge userInput
         Object.keys(variables.sharedServices || {}).forEach(key => {
           if (variables.sharedServices![key] && variables.sharedServices![key].length > 0) {
             // Merge saved userInput values with populated defaults
@@ -518,8 +535,6 @@ export default function DashboardPage() {
                 }
                 return popVar;
               });
-            } else {
-              populated[key] = savedVars;
             }
           }
         });
@@ -1020,8 +1035,9 @@ export default function DashboardPage() {
       };
 
       // Print all shared services - include all variables (defaults are always present)
-      // Sort keys for consistent ordering
-      const serviceKeys = Object.keys(allSharedServices).sort();
+      // Use original order: ice_car, ice_moped, bike, e_car, e_bike, e_moped, e_scooter, other, e_other
+      const serviceOrder = ['ice_car', 'ice_moped', 'bike', 'e_car', 'e_bike', 'e_moped', 'e_scooter', 'other', 'e_other'];
+      const serviceKeys = serviceOrder.filter(key => allSharedServices[key] && allSharedServices[key].length > 0);
       
       for (const key of serviceKeys) {
         const vars = allSharedServices[key];
