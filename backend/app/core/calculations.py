@@ -703,9 +703,9 @@ def _format_results(
     def _co2_category_totals(kg_per_day: float) -> Dict[str, float]:
         # Convert kg/day -> ton/year (1 ton = 1000 kg)
         ton_per_year = (kg_per_day / 1000.0) * 365.25
-        # Original Streamlit formula: (kg/day / inhabitants) * 1000 * 365.25
+        # Original Streamlit formula: ton_per_year / inhabitants * 1000
         # This gives ton/year/1,000 inhabitants
-        ton_per_year_per_1000 = (kg_per_day / inhabitants) * 1000.0 * 365.25 if inhabitants > 0 else 0.0
+        ton_per_year_per_1000 = (ton_per_year / inhabitants) * 1000.0 if inhabitants > 0 else 0.0
         return {
             "kgPerDay": float(kg_per_day),
             "tonPerYear": float(ton_per_year),
@@ -718,15 +718,15 @@ def _format_results(
     co2_lca_kg_per_day = sum(per_mode[mode]["lca"] for mode in NMS_TYPES)
     
     # Air quality totals
-    # Original Streamlit formula: (g/day / inhabitants) * 1000 * 365.25
+    # Original Streamlit formula: kg_per_year / inhabitants * 1000
     # This matches the original output values
     nox_g_per_day = sum([per_mode[mode]["nox"] for mode in NMS_TYPES])
     nox_kg_per_year = nox_g_per_day / 1000 * 365.25
-    nox_kg_per_year_per_1000 = (nox_g_per_day / inhabitants) * 1000.0 * 365.25 if inhabitants > 0 else 0.0
+    nox_kg_per_year_per_1000 = (nox_kg_per_year / inhabitants) * 1000.0 if inhabitants > 0 else 0.0
     
     pm_g_per_day = sum([per_mode[mode]["pm"] for mode in NMS_TYPES])
     pm_kg_per_year = pm_g_per_day / 1000 * 365.25
-    pm_kg_per_year_per_1000 = (pm_g_per_day / inhabitants) * 1000.0 * 365.25 if inhabitants > 0 else 0.0
+    pm_kg_per_year_per_1000 = (pm_kg_per_year / inhabitants) * 1000.0 if inhabitants > 0 else 0.0
     
     return {
         "perMode": per_mode,
