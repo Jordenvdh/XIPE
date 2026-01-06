@@ -15,6 +15,7 @@ import {
   getGeneralVariables, 
   getTraditionalModesVariables, 
   getPrivateCarDefaults,
+  getGeneralDefaults,
   getSharedServicesVariables 
 } from '@/lib/api/variables';
 import SelectInput from '@/components/forms/SelectInput';
@@ -177,16 +178,18 @@ export default function DashboardPage() {
 
     try {
       // Fetch all variables (both saved and defaults) to include in PDF
-      // This ensures all variables are included, not just manually saved ones
+      // Use the same logic as handleCalculate to ensure PDF shows values actually used in calculations
       const [
         generalVarsFromApi,
         traditionalModesFromApi,
         privateCarDefaults,
+        generalDefaults,
         sharedServicesFromApi
       ] = await Promise.all([
         getGeneralVariables(),
         getTraditionalModesVariables(),
         getPrivateCarDefaults(dashboard.country || 'Austria'),
+        getGeneralDefaults(dashboard.country || 'Austria').catch(() => []), // Fallback to empty array if fails
         getSharedServicesVariables()
       ]);
 
@@ -358,15 +361,51 @@ export default function DashboardPage() {
         ],
       };
 
-      // Merge saved variables with defaults
-      // General variables: use API response (always includes defaults)
-      const allGeneralVars = generalVarsFromApi.variables || variables.general || [];
+      // Merge saved variables with defaults - use same logic as handleCalculate
+      // General variables: merge with country-specific defaults
+      let allGeneralVars: Array<{ variable: string; userInput: number; defaultValue: number }> = [];
+      if (generalDefaults.length > 0) {
+        const savedGeneralVars = generalVarsFromApi.variables || [];
+        allGeneralVars = generalDefaults.map((defaultVar) => {
+          const savedVar = savedGeneralVars.find(
+            v => v.variable === defaultVar.variable
+          );
+          const userExplicitlyEntered = savedVar && 
+            savedVar.userInput !== 0 && 
+            savedVar.userInput !== savedVar.defaultValue;
+          
+          return {
+            ...defaultVar,
+            userInput: userExplicitlyEntered ? savedVar.userInput : 0,
+          };
+        });
+      } else {
+        allGeneralVars = generalVarsFromApi.variables || variables.general || [];
+      }
 
-      // Traditional modes: merge saved with defaults
+      // Traditional modes: merge saved with country-specific defaults
+      // Use same logic as handleCalculate to ensure PDF shows values actually used
       const allTraditionalModes: Record<string, Array<{ variable: string; userInput: number; defaultValue: number }>> = {
-        private_car: privateCarDefaults.length > 0 
-          ? privateCarDefaults 
-          : (variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar || []),
+        private_car: (() => {
+          // Always use country-specific defaults, merge with saved userInput
+          if (privateCarDefaults.length > 0) {
+            const savedPrivateCar = variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar || [];
+            return privateCarDefaults.map((defaultVar) => {
+              const savedVar = savedPrivateCar.find(
+                v => v.variable === defaultVar.variable
+              );
+              const userExplicitlyEntered = savedVar && 
+                savedVar.userInput !== 0 && 
+                savedVar.userInput !== savedVar.defaultValue;
+              
+              return {
+                ...defaultVar,
+                userInput: userExplicitlyEntered ? savedVar.userInput : 0,
+              };
+            });
+          }
+          return variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar || [];
+        })(),
         pt_road: traditionalModesFromApi.ptRoad.length > 0 
           ? traditionalModesFromApi.ptRoad 
           : defaultTraditionalModes.pt_road,
@@ -381,40 +420,112 @@ export default function DashboardPage() {
           : defaultTraditionalModes.walking,
       };
 
-      // Override with saved variables if they exist
-      if (variables.traditionalModes?.private_car || variables.traditionalModes?.privateCar) {
-        allTraditionalModes.private_car = variables.traditionalModes.private_car || variables.traditionalModes.privateCar || [];
-      }
-      if (variables.traditionalModes?.pt_road || variables.traditionalModes?.ptRoad) {
-        allTraditionalModes.pt_road = variables.traditionalModes.pt_road || variables.traditionalModes.ptRoad || [];
-      }
-      if (variables.traditionalModes?.pt_rail || variables.traditionalModes?.ptRail) {
-        allTraditionalModes.pt_rail = variables.traditionalModes.pt_rail || variables.traditionalModes.ptRail || [];
-      }
-      if (variables.traditionalModes?.active_transport || variables.traditionalModes?.activeTransport) {
-        const activeTransport = variables.traditionalModes.active_transport || variables.traditionalModes.activeTransport || [];
-        if (activeTransport.length > 0) {
-          allTraditionalModes.cycling = [activeTransport[0]];
-        }
-        if (activeTransport.length > 1) {
-          allTraditionalModes.walking = [activeTransport[1]];
-        }
-      }
-
-      // Shared services: merge saved with defaults
-      const allSharedServices: Record<string, Array<{ variable: string; userInput: number; defaultValue: number }>> = { ...defaultSharedServices };
-      // Override with saved variables
-      Object.keys(sharedServicesFromApi).forEach(key => {
-        if (sharedServicesFromApi[key] && sharedServicesFromApi[key].length > 0) {
-          allSharedServices[key] = sharedServicesFromApi[key];
-        }
-      });
-      // Also check variables state for saved values
-      Object.keys(variables.sharedServices || {}).forEach(key => {
-        if (variables.sharedServices![key] && variables.sharedServices![key].length > 0) {
-          allSharedServices[key] = variables.sharedServices![key];
-        }
-      });
+      // Shared services: merge saved with defaults and populate from modal split
+      // Use the same logic as handleCalculate to ensure PDF shows values actually used
+      const allSharedServices: Record<string, Array<{ variable: string; userInput: number; defaultValue: number }>> = (() => {
+        const populated = { ...sharedServicesFromApi };
+        
+        // Extract modal split values
+        const ms_pcar = modalSplit.privateCar.split;
+        const ms_road = modalSplit.publicTransport.road.split;
+        const ms_rail = modalSplit.publicTransport.rail.split;
+        const ms_cyc = modalSplit.activeModes.cycling.split;
+        const ms_walk = modalSplit.activeModes.walking.split;
+        
+        // Extract trip distances
+        const dist_pcar = modalSplit.privateCar.distance;
+        const dist_road = modalSplit.publicTransport.road.distance;
+        const dist_rail = modalSplit.publicTransport.rail.distance;
+        const dist_cyc = modalSplit.activeModes.cycling.distance;
+        const dist_walk = modalSplit.activeModes.walking.distance;
+        
+        // Update all shared services with modal split values
+        Object.keys(populated).forEach(serviceKey => {
+          if (!populated[serviceKey] || !Array.isArray(populated[serviceKey])) return;
+          
+          populated[serviceKey] = populated[serviceKey].map((varItem: any) => {
+            // Update replacement percentages
+            if (varItem.variable === 'Replaces private car by (%)') {
+              return { ...varItem, defaultValue: ms_pcar };
+            }
+            if (varItem.variable === 'Replaces PT road by (%)') {
+              return { ...varItem, defaultValue: ms_road };
+            }
+            if (varItem.variable === 'Replaces PT rail by (%)') {
+              return { ...varItem, defaultValue: ms_rail };
+            }
+            if (varItem.variable === 'Replaces cycling by (%)') {
+              return { ...varItem, defaultValue: ms_cyc };
+            }
+            if (varItem.variable === 'Replaces walking by (%)') {
+              return { ...varItem, defaultValue: ms_walk };
+            }
+            
+            // Update trip distances
+            // Special cases per original Streamlit code:
+            // - bike: car and PT distances = cycling distance
+            // - e_bike: car and PT distances = 1.5 * cycling distance
+            // - escooter: car and PT distances = cycling distance
+            // - Others: use actual modal split distances
+            if (varItem.variable === 'Average trip distance of the shared mode when replacing car (km)') {
+              if (serviceKey === 'bike' || serviceKey === 'e_scooter') {
+                return { ...varItem, defaultValue: dist_cyc };
+              } else if (serviceKey === 'e_bike') {
+                return { ...varItem, defaultValue: dist_cyc * 1.5 };
+              } else {
+                return { ...varItem, defaultValue: dist_pcar };
+              }
+            }
+            if (varItem.variable === 'Average trip distance of the shared mode when replacing PT road (km)') {
+              if (serviceKey === 'bike' || serviceKey === 'e_scooter') {
+                return { ...varItem, defaultValue: dist_cyc };
+              } else if (serviceKey === 'e_bike') {
+                return { ...varItem, defaultValue: dist_cyc * 1.5 };
+              } else {
+                return { ...varItem, defaultValue: dist_road };
+              }
+            }
+            if (varItem.variable === 'Average trip distance of the shared mode when replacing PT rail (km)') {
+              if (serviceKey === 'bike' || serviceKey === 'e_scooter') {
+                return { ...varItem, defaultValue: dist_cyc };
+              } else if (serviceKey === 'e_bike') {
+                return { ...varItem, defaultValue: dist_cyc * 1.5 };
+              } else {
+                return { ...varItem, defaultValue: dist_rail };
+              }
+            }
+            if (varItem.variable === 'Average trip distance of the shared mode when replacing cycling (km)') {
+              return { ...varItem, defaultValue: dist_cyc };
+            }
+            if (varItem.variable === 'Average trip distance of the shared mode when replacing walking (km)') {
+              return { ...varItem, defaultValue: dist_walk };
+            }
+            
+            return varItem;
+          });
+        });
+        
+        // Also check variables state for saved values and merge
+        Object.keys(variables.sharedServices || {}).forEach(key => {
+          if (variables.sharedServices![key] && variables.sharedServices![key].length > 0) {
+            // Merge saved userInput values with populated defaults
+            const savedVars = variables.sharedServices![key];
+            if (populated[key] && Array.isArray(populated[key])) {
+              populated[key] = populated[key].map((popVar: any) => {
+                const savedVar = savedVars.find((v: any) => v.variable === popVar.variable);
+                if (savedVar && savedVar.userInput !== 0 && savedVar.userInput !== savedVar.defaultValue) {
+                  return { ...popVar, userInput: savedVar.userInput };
+                }
+                return popVar;
+              });
+            } else {
+              populated[key] = savedVars;
+            }
+          }
+        });
+        
+        return populated;
+      })();
 
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
