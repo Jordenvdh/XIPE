@@ -69,10 +69,33 @@ export default function TraditionalModesVariablesPage() {
         
         setGeneralVars(generalData.variables || []);
         
-        // Backend now returns defaults, so use the data directly
         // Private car defaults come from country-specific endpoint
+        // Always use country-specific defaults when available to ensure they update when country changes
+        // Merge with saved values: preserve userInput if user has entered values, otherwise use defaultValue
+        let mergedPrivateCar: VariableRow[] = [];
+        if (privateCarDefaults.length > 0) {
+          // We have country-specific defaults - use them and merge with saved userInput if exists
+          const savedPrivateCar = traditionalData.privateCar || [];
+          mergedPrivateCar = privateCarDefaults.map((defaultVar) => {
+            const savedVar = savedPrivateCar.find(
+              v => v.variable === defaultVar.variable
+            );
+            // Preserve userInput from saved values if user has entered something (non-zero)
+            // Otherwise use the new country-specific defaultValue
+            return {
+              ...defaultVar,
+              userInput: savedVar && savedVar.userInput !== 0 && savedVar.userInput !== defaultVar.defaultValue
+                ? savedVar.userInput 
+                : defaultVar.defaultValue,
+            };
+          });
+        } else {
+          // Fallback to saved values if country-specific defaults unavailable
+          mergedPrivateCar = traditionalData.privateCar || [];
+        }
+        
         setTraditionalModes({
-          privateCar: privateCarDefaults.length > 0 ? privateCarDefaults : (traditionalData.privateCar || []),
+          privateCar: mergedPrivateCar,
           ptRoad: traditionalData.ptRoad || [],
           ptRail: traditionalData.ptRail || [],
           activeTransport: traditionalData.activeTransport || [],
