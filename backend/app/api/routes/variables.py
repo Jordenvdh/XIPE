@@ -42,7 +42,7 @@ async def get_general_variables():
     if "general" in _variables_storage:
         return GeneralVariables(variables=_variables_storage["general"])
     
-    # Return default values if not set
+    # Return default values if not set (Austria defaults as fallback)
     default_general = [
         {"variable": "Average CO2 emission intensity for electricity generation (gCO2/kWh)", "userInput": 0.0, "defaultValue": 96.0},
         {"variable": "Well-to-Tank emissions fraction of Well-to-Wheel emissions ICE cars (%)", "userInput": 0.0, "defaultValue": 20.0},
@@ -53,6 +53,74 @@ async def get_general_variables():
     ]
     
     return GeneralVariables(variables=[VariableRow(**v) for v in default_general])
+
+
+@router.get("/general-defaults", response_model=List[VariableRow])
+async def get_general_defaults(country: str = Query(..., description="Country name matching emission datasets")):
+    """
+    Get country-specific default variables for general variables.
+    
+    This mirrors the logic used in the calculation engine:
+    - Electricity CO2 intensity is country-specific
+    - Average car fleet age is country-specific
+    - Fuel distribution (petrol/diesel/ev percentages) is country-specific
+    - Well-to-Tank emissions fraction is universal (20%)
+    
+    Security:
+    - OWASP #1 - Injection Prevention: Country name validated
+    - OWASP #10 - Logging: Access attempts logged
+    """
+    # Import sanitization function from data.py
+    from app.api.routes.data import _sanitize_country_name
+    
+    try:
+        # OWASP #1 - Injection Prevention: Sanitize and validate country name
+        sanitized_country = _sanitize_country_name(country)
+        data_loader = get_data_loader()
+        
+        # Get country-specific data
+        country_data = data_loader.get_country_data(sanitized_country)
+        car_age = country_data["averageAge"]
+        fuel_dist = country_data["fuelDistribution"]
+        electricity_co2 = country_data["electricityCo2"]
+        
+        # Return country-specific defaults
+        # Note: Well-to-Tank emissions fraction (20%) is universal, not country-specific
+        return [
+            VariableRow(
+                variable="Average CO2 emission intensity for electricity generation (gCO2/kWh)",
+                userInput=0.0,
+                defaultValue=float(electricity_co2)
+            ),
+            VariableRow(
+                variable="Well-to-Tank emissions fraction of Well-to-Wheel emissions ICE cars (%)",
+                userInput=0.0,
+                defaultValue=20.0  # Universal value
+            ),
+            VariableRow(
+                variable="Average age of the car fleet (years)",
+                userInput=0.0,
+                defaultValue=float(car_age)
+            ),
+            VariableRow(
+                variable="Percentage of petrol cars in the current fleet (%)",
+                userInput=0.0,
+                defaultValue=float(fuel_dist["petrol"])
+            ),
+            VariableRow(
+                variable="Percentage of diesel cars in the current fleet (%)",
+                userInput=0.0,
+                defaultValue=float(fuel_dist["diesel"])
+            ),
+            VariableRow(
+                variable="Percentage of electric cars in the current fleet (%)",
+                userInput=0.0,
+                defaultValue=float(fuel_dist["ev"])
+            ),
+        ]
+    except Exception as e:
+        security_logger.error(f"Error fetching general defaults for country {country}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch general defaults: {str(e)}")
 
 
 @router.post("/general")

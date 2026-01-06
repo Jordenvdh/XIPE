@@ -14,6 +14,7 @@ import {
   getGeneralVariables, 
   getTraditionalModesVariables,
   getPrivateCarDefaults,
+  getGeneralDefaults,
   saveGeneralVariables,
   saveTraditionalModeVariables 
 } from '@/lib/api/variables';
@@ -61,13 +62,42 @@ export default function TraditionalModesVariablesPage() {
         
         const country = dashboard.country || 'Austria';
         
-        const [generalData, traditionalData, privateCarDefaults] = await Promise.all([
+        const [generalData, traditionalData, privateCarDefaults, generalDefaults] = await Promise.all([
           getGeneralVariables(),
           getTraditionalModesVariables(),
-          getPrivateCarDefaults(country).catch(() => []) // Fallback to empty array if fails
+          getPrivateCarDefaults(country).catch(() => []), // Fallback to empty array if fails
+          getGeneralDefaults(country).catch(() => []) // Fallback to empty array if fails
         ]);
         
-        setGeneralVars(generalData.variables || []);
+        // Merge general variables with country-specific defaults
+        // Similar to private car: preserve userInput if user explicitly entered something, otherwise use country-specific defaultValue
+        let mergedGeneralVars: VariableRow[] = [];
+        if (generalDefaults.length > 0) {
+          const savedGeneralVars = generalData.variables || [];
+          mergedGeneralVars = generalDefaults.map((defaultVar) => {
+            const savedVar = savedGeneralVars.find(
+              v => v.variable === defaultVar.variable
+            );
+            // If user has saved a value that's different from the saved defaultValue,
+            // it means they explicitly entered something, so preserve it
+            // Otherwise, use the new country-specific defaultValue
+            const userExplicitlyEntered = savedVar && 
+              savedVar.userInput !== 0 && 
+              savedVar.userInput !== savedVar.defaultValue;
+            
+            return {
+              ...defaultVar, // This includes the new country-specific defaultValue
+              userInput: userExplicitlyEntered 
+                ? savedVar.userInput 
+                : defaultVar.defaultValue, // Use new defaultValue if no explicit user input
+            };
+          });
+        } else {
+          // Fallback to saved values if country-specific defaults unavailable
+          mergedGeneralVars = generalData.variables || [];
+        }
+        
+        setGeneralVars(mergedGeneralVars);
         
         // Private car defaults come from country-specific endpoint
         // Always use country-specific defaults when available to ensure they update when country changes

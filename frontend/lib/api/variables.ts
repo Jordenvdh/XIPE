@@ -31,6 +31,16 @@ export async function getPrivateCarDefaults(country: string): Promise<VariableRo
 }
 
 /**
+ * Get country-specific general variables defaults
+ */
+export async function getGeneralDefaults(country: string): Promise<VariableRow[]> {
+  const response = await apiClient.get<VariableRow[]>('/api/variables/general-defaults', {
+    params: { country },
+  });
+  return response.data;
+}
+
+/**
  * Get shared services variables (returns empty object if none saved)
  */
 export async function getSharedServicesVariables(): Promise<Record<string, VariableRow[]>> {
