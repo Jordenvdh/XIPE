@@ -350,17 +350,18 @@ def _prepare_general_variables(
     df_var_gen = pd.DataFrame(general_vars)
     df_var_gen["variable"] = df_var_gen["variable"].str.strip()
     
-    # Use defaults if user input is zero
-    df_var_gen["userInput"] = np.where(
-        df_var_gen["userInput"] == 0, df_var_gen["defaultValue"], df_var_gen["userInput"]
-    )
-    
-    # Update defaults based on country
+    # Update defaults based on country FIRST (before using them)
+    # This ensures country-specific values are used when userInput is 0
     df_var_gen.at[0, "defaultValue"] = country_data["electricityCo2"]
     df_var_gen.at[2, "defaultValue"] = car_age
     df_var_gen.at[3, "defaultValue"] = fuel_dist["petrol"]
     df_var_gen.at[4, "defaultValue"] = fuel_dist["diesel"]
     df_var_gen.at[5, "defaultValue"] = fuel_dist["ev"]
+    
+    # Use defaults if user input is zero (now using updated country-specific defaults)
+    df_var_gen["userInput"] = np.where(
+        df_var_gen["userInput"] == 0, df_var_gen["defaultValue"], df_var_gen["userInput"]
+    )
     
     df_var_gen = df_var_gen.drop(columns=["defaultValue"])
     df_var_gen = df_var_gen.rename(columns={"userInput": "general"})
