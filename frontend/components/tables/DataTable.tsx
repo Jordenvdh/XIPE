@@ -74,20 +74,29 @@ export default function DataTable({
         return variables;
       }
       
-      // Otherwise, merge: keep current userInput if non-zero, but always update defaultValue
+      // Otherwise, merge: preserve userInput from props if it exists (saved value),
+      // otherwise preserve current userInput if user is actively editing
       return variables.map((propVar, index) => {
         const currentVar = current[index];
-        // If current has a non-zero userInput, preserve it unless props also has a different non-zero userInput
-        if (currentVar && currentVar.userInput !== 0 && currentVar.userInput !== currentVar.defaultValue) {
-          // User has explicitly entered something - preserve it, but update defaultValue
+        
+        // If props has a non-zero userInput, it means it was saved - use it
+        // This ensures saved values are displayed correctly
+        if (propVar.userInput !== 0) {
           return {
-            ...propVar, // This includes the updated defaultValue
-            userInput: propVar.userInput !== 0 && propVar.userInput !== propVar.defaultValue 
-              ? propVar.userInput 
-              : currentVar.userInput, // Preserve explicit user input
+            ...propVar, // Includes updated defaultValue and saved userInput
           };
         }
-        // Otherwise use props as-is (includes updated defaultValue)
+        
+        // If current has a non-zero userInput and props doesn't have one saved,
+        // preserve current (user is actively editing)
+        if (currentVar && currentVar.userInput !== 0) {
+          return {
+            ...propVar, // Includes updated defaultValue
+            userInput: currentVar.userInput, // Preserve current user input
+          };
+        }
+        
+        // Otherwise use props as-is (includes updated defaultValue and userInput=0)
         return propVar;
       });
     });
@@ -139,7 +148,7 @@ export default function DataTable({
                   {/* OWASP #7 - XSS: type="number" restricts input to numeric values only */}
                   <input
                     type="number"
-                    value={variable.userInput === 0 ? 0 : variable.userInput}
+                    value={variable.userInput || ''}
                     onChange={(e) => {
                       // OWASP #1 - Injection Prevention: Parse and validate numeric input
                       const newValue = parseFloat(e.target.value) || 0;

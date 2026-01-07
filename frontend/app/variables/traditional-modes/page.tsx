@@ -70,7 +70,7 @@ export default function TraditionalModesVariablesPage() {
         ]);
         
         // Merge general variables with country-specific defaults
-        // Similar to private car: preserve userInput if user explicitly entered something, otherwise set to 0
+        // Preserve userInput from saved values if they exist (user has saved something)
         let mergedGeneralVars: VariableRow[] = [];
         if (generalDefaults.length > 0) {
           const savedGeneralVars = generalData.variables || [];
@@ -78,18 +78,12 @@ export default function TraditionalModesVariablesPage() {
             const savedVar = savedGeneralVars.find(
               v => v.variable === defaultVar.variable
             );
-            // If user has saved a value that's different from the saved defaultValue,
-            // it means they explicitly entered something, so preserve it
-            // Otherwise, set userInput to 0 (no user input)
-            const userExplicitlyEntered = savedVar && 
-              savedVar.userInput !== 0 && 
-              savedVar.userInput !== savedVar.defaultValue;
-            
+            // If savedVar exists, it means user has saved this variable
+            // Preserve the saved userInput (even if it equals the old defaultValue)
+            // Only set to 0 if no saved value exists
             return {
               ...defaultVar, // This includes the new country-specific defaultValue
-              userInput: userExplicitlyEntered 
-                ? savedVar.userInput 
-                : 0, // Set to 0 if no explicit user input
+              userInput: savedVar ? savedVar.userInput : 0, // Preserve saved userInput, or 0 if not saved
             };
           });
         } else {
@@ -101,28 +95,22 @@ export default function TraditionalModesVariablesPage() {
         
         // Private car defaults come from country-specific endpoint
         // Always use country-specific defaults when available to ensure they update when country changes
-        // Merge with saved values: preserve userInput only if user explicitly entered something different
+        // Merge with saved values: preserve userInput from saved values if they exist
         let mergedPrivateCar: VariableRow[] = [];
         if (privateCarDefaults.length > 0) {
           // We have country-specific defaults - always use them for defaultValue
-          // Merge with saved userInput: only preserve if user explicitly entered something
+          // Merge with saved userInput: preserve saved userInput if it exists
           const savedPrivateCar = traditionalData.privateCar || [];
           mergedPrivateCar = privateCarDefaults.map((defaultVar) => {
             const savedVar = savedPrivateCar.find(
               v => v.variable === defaultVar.variable
             );
-            // If user has saved a value that's different from the saved defaultValue,
-            // it means they explicitly entered something, so preserve it
-            // Otherwise, set userInput to 0 (no user input)
-            const userExplicitlyEntered = savedVar && 
-              savedVar.userInput !== 0 && 
-              savedVar.userInput !== savedVar.defaultValue;
-            
+            // If savedVar exists, it means user has saved this variable
+            // Preserve the saved userInput (even if it equals the old defaultValue)
+            // Only set to 0 if no saved value exists
             return {
               ...defaultVar, // This includes the new country-specific defaultValue
-              userInput: userExplicitlyEntered 
-                ? savedVar.userInput 
-                : 0, // Set to 0 if no explicit user input
+              userInput: savedVar ? savedVar.userInput : 0, // Preserve saved userInput, or 0 if not saved
             };
           });
         } else {
