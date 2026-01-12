@@ -1113,11 +1113,13 @@ export default function DashboardPage() {
         generalVarsFromApi,
         traditionalModesFromApi,
         privateCarDefaults,
+        generalDefaults,
         sharedServicesFromApi,
       ] = await Promise.all([
         getGeneralVariables(),
         getTraditionalModesVariables(),
         getPrivateCarDefaults(dashboard.country || 'Austria'),
+        getGeneralDefaults(dashboard.country || 'Austria'),
         getSharedServicesVariables(),
       ]);
 
@@ -1125,16 +1127,42 @@ export default function DashboardPage() {
       // - traditionalModes: camelCase keys (privateCar/ptRoad/ptRail/activeTransport)
       // - sharedServices: snake_case keys (ice_car, e_bike, ...)
       const requestVariables = {
-        // General variables endpoint always returns defaults if not saved.
-        general: (generalVarsFromApi.variables && generalVarsFromApi.variables.length > 0)
-          ? generalVarsFromApi.variables
-          : variables.general,
+        // General variables: merge saved userInput with country-specific defaults
+        general: (() => {
+          const savedGeneral = generalVarsFromApi.variables || [];
+          if (generalDefaults.length > 0) {
+            // Merge saved userInput with country-specific defaults
+            return generalDefaults.map((defaultVar) => {
+              const savedVar = savedGeneral.find(v => v.variable === defaultVar.variable);
+              return {
+                ...defaultVar, // Country-specific defaultValue
+                userInput: savedVar ? savedVar.userInput : 0, // Preserve saved userInput
+              };
+            });
+          }
+          // Fallback to saved values if country-specific defaults unavailable
+          return savedGeneral.length > 0 ? savedGeneral : variables.general;
+        })(),
 
         // Traditional modes:
-        // - Private car is country-specific, use dedicated endpoint.
-        // - Others come from /traditional-modes (backend returns defaults if not saved).
+        // - Private car: merge saved userInput with country-specific defaults
+        // - Others: use saved values from API (backend returns defaults if not saved)
         traditionalModes: {
-          privateCar: privateCarDefaults || [],
+          privateCar: (() => {
+            const savedPrivateCar = traditionalModesFromApi.privateCar || [];
+            if (privateCarDefaults.length > 0) {
+              // Merge saved userInput with country-specific defaults
+              return privateCarDefaults.map((defaultVar) => {
+                const savedVar = savedPrivateCar.find(v => v.variable === defaultVar.variable);
+                return {
+                  ...defaultVar, // Country-specific defaultValue
+                  userInput: savedVar ? savedVar.userInput : 0, // Preserve saved userInput
+                };
+              });
+            }
+            // Fallback to saved values if country-specific defaults unavailable
+            return savedPrivateCar;
+          })(),
           ptRoad: traditionalModesFromApi.ptRoad || [],
           ptRail: traditionalModesFromApi.ptRail || [],
           activeTransport: traditionalModesFromApi.activeTransport || [],
@@ -1145,7 +1173,13 @@ export default function DashboardPage() {
         // Populate replacement percentages and trip distances from modal split
         // (matching original Streamlit behavior where these come from dashboard)
         sharedServices: (() => {
-          const populated = { ...sharedServicesFromApi };
+          // Deep copy to avoid reference issues and preserve userInput
+          const populated: Record<string, Array<{ variable: string; userInput: number; defaultValue: number }>> = {};
+          Object.keys(sharedServicesFromApi).forEach(key => {
+            if (sharedServicesFromApi[key] && Array.isArray(sharedServicesFromApi[key])) {
+              populated[key] = sharedServicesFromApi[key].map(item => ({ ...item }));
+            }
+          });
           
           // Extract modal split values
           const ms_pcar = modalSplit.privateCar.split;
@@ -1162,28 +1196,29 @@ export default function DashboardPage() {
           const dist_walk = modalSplit.activeModes.walking.distance;
           
           // Update all shared services with modal split values
+          // IMPORTANT: Preserve userInput values when updating defaultValue
           Object.keys(populated).forEach(serviceKey => {
             if (!populated[serviceKey] || !Array.isArray(populated[serviceKey])) return;
             
             populated[serviceKey] = populated[serviceKey].map((varItem: any) => {
-              // Update replacement percentages
+              // Update replacement percentages (only update defaultValue, preserve userInput)
               if (varItem.variable === 'Replaces private car by (%)') {
-                return { ...varItem, defaultValue: ms_pcar };
+                return { ...varItem, defaultValue: ms_pcar }; // userInput preserved
               }
               if (varItem.variable === 'Replaces PT road by (%)') {
-                return { ...varItem, defaultValue: ms_road };
+                return { ...varItem, defaultValue: ms_road }; // userInput preserved
               }
               if (varItem.variable === 'Replaces PT rail by (%)') {
-                return { ...varItem, defaultValue: ms_rail };
+                return { ...varItem, defaultValue: ms_rail }; // userInput preserved
               }
               if (varItem.variable === 'Replaces cycling by (%)') {
-                return { ...varItem, defaultValue: ms_cyc };
+                return { ...varItem, defaultValue: ms_cyc }; // userInput preserved
               }
               if (varItem.variable === 'Replaces walking by (%)') {
-                return { ...varItem, defaultValue: ms_walk };
+                return { ...varItem, defaultValue: ms_walk }; // userInput preserved
               }
               
-              // Update trip distances
+              // Update trip distances (only update defaultValue, preserve userInput)
               // Special cases per original Streamlit code:
               // - bike: car and PT distances = cycling distance
               // - e_bike: car and PT distances = 1.5 * cycling distance
@@ -1191,38 +1226,39 @@ export default function DashboardPage() {
               // - Others: use actual modal split distances
               if (varItem.variable === 'Average trip distance of the shared mode when replacing car (km)') {
                 if (serviceKey === 'bike' || serviceKey === 'e_scooter') {
-                  return { ...varItem, defaultValue: dist_cyc };
+                  return { ...varItem, defaultValue: dist_cyc }; // userInput preserved
                 } else if (serviceKey === 'e_bike') {
-                  return { ...varItem, defaultValue: dist_cyc * 1.5 };
+                  return { ...varItem, defaultValue: dist_cyc * 1.5 }; // userInput preserved
                 } else {
-                  return { ...varItem, defaultValue: dist_pcar };
+                  return { ...varItem, defaultValue: dist_pcar }; // userInput preserved
                 }
               }
               if (varItem.variable === 'Average trip distance of the shared mode when replacing PT road (km)') {
                 if (serviceKey === 'bike' || serviceKey === 'e_scooter') {
-                  return { ...varItem, defaultValue: dist_cyc };
+                  return { ...varItem, defaultValue: dist_cyc }; // userInput preserved
                 } else if (serviceKey === 'e_bike') {
-                  return { ...varItem, defaultValue: dist_cyc * 1.5 };
+                  return { ...varItem, defaultValue: dist_cyc * 1.5 }; // userInput preserved
                 } else {
-                  return { ...varItem, defaultValue: dist_road };
+                  return { ...varItem, defaultValue: dist_road }; // userInput preserved
                 }
               }
               if (varItem.variable === 'Average trip distance of the shared mode when replacing PT rail (km)') {
                 if (serviceKey === 'bike' || serviceKey === 'e_scooter') {
-                  return { ...varItem, defaultValue: dist_cyc };
+                  return { ...varItem, defaultValue: dist_cyc }; // userInput preserved
                 } else if (serviceKey === 'e_bike') {
-                  return { ...varItem, defaultValue: dist_cyc * 1.5 };
+                  return { ...varItem, defaultValue: dist_cyc * 1.5 }; // userInput preserved
                 } else {
-                  return { ...varItem, defaultValue: dist_rail };
+                  return { ...varItem, defaultValue: dist_rail }; // userInput preserved
                 }
               }
               if (varItem.variable === 'Average trip distance of the shared mode when replacing cycling (km)') {
-                return { ...varItem, defaultValue: dist_cyc };
+                return { ...varItem, defaultValue: dist_cyc }; // userInput preserved
               }
               if (varItem.variable === 'Average trip distance of the shared mode when replacing walking (km)') {
-                return { ...varItem, defaultValue: dist_walk };
+                return { ...varItem, defaultValue: dist_walk }; // userInput preserved
               }
               
+              // For all other variables, preserve both userInput and defaultValue
               return varItem;
             });
           });
