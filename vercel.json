@@ -1,18 +1,13 @@
 {
   "version": 2,
   "framework": "nextjs",
-  "installCommand": "npm install && cd frontend && npm install",
+  "installCommand": "npm ci && cd frontend && npm ci",
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "frontend/.next",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/backend" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/backend"
+    }
   ]
 }
-
-
-
-
-
-
-
-

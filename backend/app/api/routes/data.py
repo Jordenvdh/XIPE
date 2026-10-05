@@ -42,8 +42,8 @@ def _sanitize_country_name(country: str) -> str:
     
     # Validate: Only allow alphanumeric, spaces, hyphens, and apostrophes
     # This prevents injection attacks while allowing legitimate country names
-    if not re.match(r"^[a-zA-Z0-9\s\-']+$", sanitized):
-        security_logger.warning(f"Invalid country name format attempted: {country[:50]}")
+    if not re.fullmatch(r"[a-zA-Z0-9 \-']+", sanitized):
+        security_logger.warning(f"Invalid country name format attempted: {country[:50]!r}")
         raise HTTPException(
             status_code=400, 
             detail="Invalid country name format"
@@ -76,11 +76,7 @@ async def get_countries():
         # OWASP #10 - Logging: Log data loading errors for debugging
         error_msg = str(e)
         security_logger.error(f"Error loading countries - data not loaded: {error_msg}")
-        # Include more detail in development (check if we're in a dev environment)
         detail_msg = "Error loading countries. Data files may be missing or inaccessible."
-        import os
-        if os.getenv("VERCEL_ENV") != "production":
-            detail_msg += f" Details: {error_msg[:200]}"  # Limit detail length
         raise HTTPException(
             status_code=500, 
             detail=detail_msg
@@ -90,9 +86,6 @@ async def get_countries():
         error_msg = str(e)
         security_logger.error(f"Error loading countries - file not found: {error_msg}")
         detail_msg = "Error loading countries. Data files not found."
-        import os
-        if os.getenv("VERCEL_ENV") != "production":
-            detail_msg += f" Details: {error_msg[:200]}"
         raise HTTPException(
             status_code=500,
             detail=detail_msg
@@ -105,9 +98,6 @@ async def get_countries():
         import traceback
         security_logger.error(f"Traceback: {traceback.format_exc()}")
         detail_msg = "Error loading countries. Please try again later."
-        import os
-        if os.getenv("VERCEL_ENV") != "production":
-            detail_msg += f" Error: {error_msg[:200]}"
         raise HTTPException(
             status_code=500, 
             detail=detail_msg
@@ -147,7 +137,7 @@ async def get_country_data(country: str):
         )
     except ValueError as e:
         # OWASP #10 - Logging: Log access denial attempts
-        security_logger.warning(f"Country not found: {country[:50]}")
+        security_logger.warning(f"Country not found: {country[:50]!r}")
         raise HTTPException(status_code=404, detail="Country not found")
     except HTTPException:
         # Re-raise HTTP exceptions (like validation errors)
@@ -155,7 +145,7 @@ async def get_country_data(country: str):
     except Exception as e:
         # OWASP #3 - Sensitive Data Exposure: Generic error message
         # OWASP #10 - Logging: Log errors for monitoring
-        security_logger.error(f"Error loading country data for '{country[:50]}': {type(e).__name__}")
+        security_logger.error(f"Error loading country data for {country[:50]!r}: {type(e).__name__}")
         raise HTTPException(
             status_code=500, 
             detail="Error loading country data. Please try again later."

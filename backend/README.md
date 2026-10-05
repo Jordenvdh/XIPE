@@ -39,11 +39,8 @@ API documentation (Swagger UI) available at `http://localhost:8000/docs`
 
 ### Variables Endpoints
 - `GET /api/variables/general` - Get general variables
-- `POST /api/variables/general` - Save general variables
 - `GET /api/variables/traditional-modes` - Get traditional modes variables
-- `POST /api/variables/traditional-modes/{mode}` - Save traditional mode variables
 - `GET /api/variables/shared-services` - Get shared services variables
-- `POST /api/variables/shared-services/{service}` - Save shared service variables
 
 ### Calculation Endpoints
 - `POST /api/calculations/emissions` - Calculate emissions

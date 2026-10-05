@@ -21,6 +21,10 @@ const EUROPEAN_COUNTRIES = [
   'SK', 'SM', 'TR', 'UA', 'VA', 'XK'
 ].join(',');
 
+const MAX_CACHE_ENTRIES = 100;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const nominatimCache = new Map<string, any>();
+
 /**
  * Search for European cities using Nominatim API
  * @param query Search query (city name)
@@ -45,27 +49,31 @@ export async function searchEuropeanCities(
     
     // First, try a more specific search with the query as a city name
     const prefixQuery = `${query}*`; // Help Nominatim understand we want prefix matches
-    const response = await fetch(
+    const url =
       `https://nominatim.openstreetmap.org/search?` +
       `q=${encodeURIComponent(query)}` +
       `&format=json` +
       `&addressdetails=1` +
       `&limit=100` + // Request many results to find cities starting with query
-      `&countrycodes=${countryCode || EUROPEAN_COUNTRIES}` + // Filter by specific country if provided
+      `&countrycodes=${encodeURIComponent(countryCode || EUROPEAN_COUNTRIES)}` + // Filter by specific country if provided
       `&featuretype=city,town,municipality` + // Include cities, towns, and municipalities
-      `&accept-language=en`,
-      {
-        headers: {
-          'User-Agent': 'XIPE Model Application', // Required by Nominatim
-        },
+      `&accept-language=en`;
+
+    // Reuse earlier answers so repeated queries don't hit Nominatim again (usage policy)
+    let data = nominatimCache.get(url);
+    if (!data) {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
       }
-    );
 
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
+      data = await response.json();
+      if (nominatimCache.size >= MAX_CACHE_ENTRIES) {
+        nominatimCache.delete(nominatimCache.keys().next().value as string);
+      }
+      nominatimCache.set(url, data);
     }
-
-    const data = await response.json();
 
     // Transform Nominatim results to our format
     const cities: CityResult[] = data

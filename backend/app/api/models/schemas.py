@@ -10,8 +10,18 @@ Security considerations:
 - OWASP #1 - Injection Prevention: Pydantic validates and sanitizes input
 - OWASP #3 - Sensitive Data Exposure: Only expose necessary fields
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Dict, Optional
+
+# OWASP #4 - Insecure Design: Size limits on request data prevent oversized payloads
+MAX_TEXT_LENGTH = 200
+MAX_LIST_ITEMS = 100
+MAX_DICT_KEYS = 20
+
+
+class InputModel(BaseModel):
+    """Base for request-side models: rejects NaN and Infinity in numeric fields"""
+    model_config = ConfigDict(allow_inf_nan=False)
 
 
 class FuelDistribution(BaseModel):
@@ -52,7 +62,7 @@ class CountryData(BaseModel):
     electricityCo2: float = Field(ge=0, description="Electricity CO2 intensity in gCO2/kWh")
 
 
-class VariableRow(BaseModel):
+class VariableRow(InputModel):
     """
     Single row in a variables table
     
@@ -65,12 +75,12 @@ class VariableRow(BaseModel):
     - userInput: User-provided value (0.0 if not set)
     - defaultValue: Default value for the variable
     """
-    variable: str = Field(description="Variable name or description")
+    variable: str = Field(max_length=MAX_TEXT_LENGTH, description="Variable name or description")
     userInput: float = Field(description="User-provided input value")
     defaultValue: float = Field(description="Default value for the variable")
 
 
-class GeneralVariables(BaseModel):
+class GeneralVariables(InputModel):
     """
     General variables for emissions calculations
     
@@ -81,10 +91,10 @@ class GeneralVariables(BaseModel):
     Fields:
     - variables: List of variable rows
     """
-    variables: List[VariableRow] = Field(description="List of general variables")
+    variables: List[VariableRow] = Field(max_length=MAX_LIST_ITEMS, description="List of general variables")
 
 
-class TraditionalModesVariables(BaseModel):
+class TraditionalModesVariables(InputModel):
     """
     Variables for traditional transportation modes
     
@@ -98,10 +108,10 @@ class TraditionalModesVariables(BaseModel):
     - ptRail: Variables for public transport rail mode
     - activeTransport: Variables for active transport mode
     """
-    privateCar: List[VariableRow] = Field(description="Private car variables")
-    ptRoad: List[VariableRow] = Field(description="Public transport road variables")
-    ptRail: List[VariableRow] = Field(description="Public transport rail variables")
-    activeTransport: List[VariableRow] = Field(description="Active transport variables")
+    privateCar: List[VariableRow] = Field(max_length=MAX_LIST_ITEMS, description="Private car variables")
+    ptRoad: List[VariableRow] = Field(max_length=MAX_LIST_ITEMS, description="Public transport road variables")
+    ptRail: List[VariableRow] = Field(max_length=MAX_LIST_ITEMS, description="Public transport rail variables")
+    activeTransport: List[VariableRow] = Field(max_length=MAX_LIST_ITEMS, description="Active transport variables")
 
 
 class SharedServicesVariables(BaseModel):
@@ -132,7 +142,7 @@ class SharedServicesVariables(BaseModel):
     eOther: Optional[List[VariableRow]] = Field(None, description="Electric other shared service variables")
 
 
-class AllVariables(BaseModel):
+class AllVariables(InputModel):
     """
     All variables grouped together
     
@@ -145,12 +155,12 @@ class AllVariables(BaseModel):
     - traditionalModes: Traditional modes variables (as dictionary)
     - sharedServices: Shared services variables (as dictionary)
     """
-    general: List[VariableRow] = Field(description="General variables")
-    traditionalModes: Dict[str, List[VariableRow]] = Field(description="Traditional modes variables")
-    sharedServices: Dict[str, List[VariableRow]] = Field(description="Shared services variables")
+    general: List[VariableRow] = Field(max_length=MAX_LIST_ITEMS, description="General variables")
+    traditionalModes: Dict[str, List[VariableRow]] = Field(max_length=MAX_DICT_KEYS, description="Traditional modes variables")
+    sharedServices: Dict[str, List[VariableRow]] = Field(max_length=MAX_DICT_KEYS, description="Shared services variables")
 
 
-class ModalSplitItem(BaseModel):
+class ModalSplitItem(InputModel):
     """
     Modal split item with split percentage and distance
     
@@ -162,10 +172,10 @@ class ModalSplitItem(BaseModel):
     - distance: Average distance in km
     """
     split: float = Field(ge=0, le=100, description="Modal split percentage")
-    distance: float = Field(ge=0, description="Average distance in km")
+    distance: float = Field(ge=0, le=100_000, description="Average distance in km")
 
 
-class PublicTransportSplit(BaseModel):
+class PublicTransportSplit(InputModel):
     """
     Public transport modal split
     
@@ -180,7 +190,7 @@ class PublicTransportSplit(BaseModel):
     rail: ModalSplitItem = Field(description="Rail public transport modal split")
 
 
-class ActiveModesSplit(BaseModel):
+class ActiveModesSplit(InputModel):
     """
     Active modes modal split
     
@@ -195,7 +205,7 @@ class ActiveModesSplit(BaseModel):
     walking: ModalSplitItem = Field(description="Walking modal split")
 
 
-class ModalSplit(BaseModel):
+class ModalSplit(InputModel):
     """
     Complete modal split structure
     
@@ -212,7 +222,7 @@ class ModalSplit(BaseModel):
     activeModes: ActiveModesSplit = Field(description="Active modes modal split")
 
 
-class SharedMode(BaseModel):
+class SharedMode(InputModel):
     """
     Shared mobility mode configuration
     
@@ -224,12 +234,12 @@ class SharedMode(BaseModel):
     - numVehicles: Number of vehicles in the fleet
     - percentageElectric: Percentage of electric vehicles (0-100)
     """
-    mode: str = Field(description="Shared mode type")
-    numVehicles: float = Field(ge=0, description="Number of vehicles")
+    mode: str = Field(max_length=50, description="Shared mode type")
+    numVehicles: float = Field(ge=0, le=100_000_000, description="Number of vehicles")
     percentageElectric: float = Field(ge=0, le=100, description="Percentage of electric vehicles")
 
 
-class CalculationRequest(BaseModel):
+class CalculationRequest(InputModel):
     """
     Request for emissions calculation
     
@@ -245,11 +255,11 @@ class CalculationRequest(BaseModel):
     - sharedModes: List of shared mobility modes
     - variables: All variable values for calculations
     """
-    country: str = Field(description="Country name")
-    cityName: str = Field(description="City name")
-    inhabitants: int = Field(ge=1, description="Number of inhabitants")
+    country: str = Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9 \-']+$", description="Country name")
+    cityName: str = Field(max_length=MAX_TEXT_LENGTH, description="City name")
+    inhabitants: int = Field(ge=1, le=1_000_000_000, description="Number of inhabitants")
     modalSplit: ModalSplit = Field(description="Modal split data")
-    sharedModes: List[SharedMode] = Field(description="Shared mobility modes")
+    sharedModes: List[SharedMode] = Field(max_length=MAX_DICT_KEYS, description="Shared mobility modes")
     variables: AllVariables = Field(description="All variable values")
 
 

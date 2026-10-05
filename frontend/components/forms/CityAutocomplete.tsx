@@ -72,7 +72,7 @@ export default function CityAutocomplete({
     // Set new timer for debounced search
     debounceTimerRef.current = setTimeout(() => {
       performSearch(inputValue);
-    }, 300); // 300ms debounce delay
+    }, 1000); // 1s debounce: Nominatim usage policy allows at most 1 request per second
   };
 
   // Handle city selection
