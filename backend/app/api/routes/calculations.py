@@ -38,7 +38,7 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
     """
     # OWASP #10 - Logging: Log calculation requests for monitoring
     security_logger.info(
-        f"Calculation request received: country={request.country}, "
+        f"Calculation request received: country={request.country!r}, "
         f"inhabitants={request.inhabitants}"
     )
     
@@ -340,7 +340,7 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
         # Format response
         # OWASP #10 - Logging: Log successful calculations
         security_logger.info(
-            f"Calculation completed successfully: country={request.country}"
+            f"Calculation completed successfully: country={request.country!r}"
         )
         
         return CalculationResponse(**results)
@@ -354,7 +354,7 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
         # OWASP #10 - Logging: Log validation errors for monitoring/debugging.
         reason = str(e)
         security_logger.warning(
-            f"Calculation validation error: country={request.country}, "
+            f"Calculation validation error: country={request.country!r}, "
             f"reason={reason[:200]}"
         )
         raise HTTPException(
@@ -374,18 +374,13 @@ async def calculate_emissions_endpoint(request: CalculationRequest):
         
         # Log full error internally for debugging
         security_logger.error(
-            f"Calculation error: country={request.country}, "
+            f"Calculation error: country={request.country!r}, "
             f"error_type={type(e).__name__}, "
             f"error_message={error_message[:200]}, "
             f"traceback={error_traceback[:1000]}"
         )
-        # Return more detailed error to client (but sanitized)
-        if isinstance(e, KeyError):
-            error_detail = f"An error occurred during calculation: {type(e).__name__} - missing key '{e.args[0] if e.args else 'unknown'}'"
-        else:
-            error_detail = f"An error occurred during calculation: {type(e).__name__} - {error_message[:100]}"
         raise HTTPException(
-            status_code=500, 
-            detail=error_detail
+            status_code=500,
+            detail="An error occurred during calculation. Please check your inputs and try again."
         )
 

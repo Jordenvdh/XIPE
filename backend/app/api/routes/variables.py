@@ -10,7 +10,7 @@ Security considerations:
 """
 import logging
 from fastapi import APIRouter, HTTPException, Query
-from typing import Dict, List, Any
+from typing import Dict, List
 from app.api.models.schemas import (
     VariableRow,
     GeneralVariables,
@@ -26,9 +26,9 @@ security_logger = logging.getLogger("security")
 
 router = APIRouter()
 
-# In-memory storage for variables (in production, use a database)
-# OWASP #6 - Security Misconfiguration: Consider database for production
-_variables_storage: Dict[str, Any] = {}
+# OWASP #5 - Broken Access Control: This API is read-only. User-entered values are
+# saved in the visitor's own browser, never in shared server memory, so one visitor
+# can neither see nor overwrite another visitor's inputs.
 
 
 @router.get("/general", response_model=GeneralVariables)
@@ -39,10 +39,7 @@ async def get_general_variables():
     Returns:
         General variables table
     """
-    if "general" in _variables_storage:
-        return GeneralVariables(variables=_variables_storage["general"])
-    
-    # Return default values if not set (Austria defaults as fallback)
+    # Default values (Austria defaults as fallback)
     default_general = [
         {"variable": "Average CO2 emission intensity for electricity generation (gCO2/kWh)", "userInput": 0.0, "defaultValue": 96.0},
         {"variable": "Well-to-Tank emissions fraction of Well-to-Wheel emissions ICE cars (%)", "userInput": 0.0, "defaultValue": 20.0},
@@ -119,31 +116,13 @@ async def get_general_defaults(country: str = Query(..., description="Country na
             ),
         ]
     except Exception as e:
-        security_logger.error(f"Error fetching general defaults for country {country}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch general defaults: {str(e)}")
-
-
-@router.post("/general")
-async def save_general_variables(variables: GeneralVariables):
-    """
-    Save general variables
-    
-    Args:
-        variables: General variables to save (validated via Pydantic)
-        
-    Returns:
-        Success message
-        
-    Security:
-    - OWASP #1 - Injection Prevention: Input validated via Pydantic
-    - OWASP #10 - Logging: Variable modifications are logged
-    """
-    # OWASP #1 - Injection Prevention: Pydantic validates all inputs
-    # OWASP #10 - Logging: Log variable modifications
-    security_logger.info("General variables saved")
-    
-    _variables_storage["general"] = [v.dict() for v in variables.variables]
-    return {"message": "General variables saved successfully"}
+        security_logger.error(
+            f"Error fetching general defaults for country {country[:50]!r}: {type(e).__name__}"
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="Failed to fetch general defaults. Please check the country name."
+        )
 
 
 @router.get("/traditional-modes", response_model=TraditionalModesVariables)
@@ -174,67 +153,12 @@ async def get_traditional_modes_variables():
         ],
     }
     
-    # Return saved values if they exist, otherwise return defaults
-    if "traditionalModes" in _variables_storage:
-        stored = _variables_storage["traditionalModes"]
-        # Use saved active transport if it exists and has at least 2 items (cycling + walking), otherwise use defaults
-        saved_active = stored.get("active_transport", [])
-        if saved_active and len(saved_active) >= 2:
-            active_transport = [VariableRow(**v) for v in saved_active]
-        else:
-            active_transport = [VariableRow(**v) for v in default_trad_modes["cycling"]] + [VariableRow(**v) for v in default_trad_modes["walking"]]
-        
-        return TraditionalModesVariables(
-            privateCar=[VariableRow(**v) for v in stored.get("private_car", [])],
-            ptRoad=[VariableRow(**v) for v in stored.get("pt_road", default_trad_modes["pt_road"])],
-            ptRail=[VariableRow(**v) for v in stored.get("pt_rail", default_trad_modes["pt_rail"])],
-            activeTransport=active_transport
-        )
-    
-    # Return defaults if nothing is saved
     return TraditionalModesVariables(
         privateCar=[],
         ptRoad=[VariableRow(**v) for v in default_trad_modes["pt_road"]],
         ptRail=[VariableRow(**v) for v in default_trad_modes["pt_rail"]],
         activeTransport=[VariableRow(**v) for v in default_trad_modes["cycling"]] + [VariableRow(**v) for v in default_trad_modes["walking"]]
     )
-
-
-@router.post("/traditional-modes/{mode}")
-async def save_traditional_mode_variables(mode: str, variables: List[VariableRow]):
-    """
-    Save variables for a specific traditional mode
-    
-    Args:
-        mode: Mode name (private_car, pt_road, pt_rail, active_transport)
-        variables: Variables to save (validated via Pydantic)
-        
-    Returns:
-        Success message
-        
-    Security:
-    - OWASP #1 - Injection Prevention: Mode name validated against whitelist
-    - OWASP #1 - Injection Prevention: Variables validated via Pydantic
-    - OWASP #10 - Logging: Variable modifications are logged
-    """
-    # OWASP #1 - Injection Prevention: Validate mode against whitelist
-    allowed_modes = ["private_car", "pt_road", "pt_rail", "active_transport"]
-    if mode not in allowed_modes:
-        security_logger.warning(f"Invalid mode attempted: {mode[:50]}")
-        raise HTTPException(
-            status_code=400, 
-            detail="Invalid mode. Allowed modes: private_car, pt_road, pt_rail, active_transport"
-        )
-    
-    # OWASP #10 - Logging: Log variable modifications
-    security_logger.info(f"Traditional mode variables saved: {mode}")
-    
-    if "traditionalModes" not in _variables_storage:
-        _variables_storage["traditionalModes"] = {}
-    
-    # OWASP #1 - Injection Prevention: Variables validated via Pydantic
-    _variables_storage["traditionalModes"][mode] = [v.dict() for v in variables]
-    return {"message": f"{mode} variables saved successfully"}
 
 
 @router.get("/traditional-modes/private-car-defaults", response_model=List[VariableRow])
@@ -341,7 +265,7 @@ async def get_private_car_defaults(country: str = Query(..., description="Countr
         # OWASP #3 - Sensitive Data Exposure: Generic error message
         # OWASP #10 - Logging: Log errors
         security_logger.error(
-            f"Error computing private car defaults for '{country[:50]}': {type(exc).__name__}"
+            f"Error computing private car defaults for {country[:50]!r}: {type(exc).__name__}"
         )
         raise HTTPException(
             status_code=400, 
@@ -508,67 +432,7 @@ async def get_shared_services_variables():
         ],
     }
     
-    # Return saved values if they exist, otherwise return defaults
-    if "sharedServices" in _variables_storage:
-        saved = _variables_storage["sharedServices"]
-        result = {}
-        # Merge saved values with defaults (saved values override defaults)
-        for key in default_shared_services.keys():
-            if key in saved:
-                result[key] = [VariableRow(**v) for v in saved[key]]
-            else:
-                result[key] = [VariableRow(**v) for v in default_shared_services[key]]
-        return result
-    
-    # Return all defaults if nothing is saved
     return {
         k: [VariableRow(**v) for v in vars_list]
         for k, vars_list in default_shared_services.items()
     }
-
-
-@router.post("/shared-services/{service}")
-async def save_shared_service_variables(service: str, variables: List[VariableRow]):
-    """
-    Save variables for a specific shared service
-    
-    Args:
-        service: Service name (ice_car, ice_moped, bike, e_car, etc.)
-        variables: Variables to save (validated via Pydantic)
-        
-    Returns:
-        Success message
-        
-    Security:
-    - OWASP #1 - Injection Prevention: Service name validated against pattern
-    - OWASP #1 - Injection Prevention: Variables validated via Pydantic
-    - OWASP #10 - Logging: Variable modifications are logged
-    """
-    # OWASP #1 - Injection Prevention: Validate service name format
-    # Allow alphanumeric and underscores only (Supabase naming convention)
-    import re
-    if not re.match(r"^[a-zA-Z0-9_]+$", service):
-        security_logger.warning(f"Invalid service name format attempted: {service[:50]}")
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid service name format. Use alphanumeric characters and underscores only."
-        )
-    
-    # OWASP #10 - Logging: Log variable modifications
-    security_logger.info(f"Shared service variables saved: {service}")
-    
-    if "sharedServices" not in _variables_storage:
-        _variables_storage["sharedServices"] = {}
-    
-    # OWASP #1 - Injection Prevention: Variables validated via Pydantic
-    _variables_storage["sharedServices"][service] = [v.dict() for v in variables]
-    return {"message": f"{service} variables saved successfully"}
-
-
-
-
-
-
-
-
-

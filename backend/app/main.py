@@ -9,8 +9,12 @@ Security considerations:
 - Production: Consider adding rate limiting, authentication, and HTTPS enforcement
 """
 import logging
-from fastapi import FastAPI
+import time
+from collections import defaultdict, deque
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 # Configure logging for security events
 # OWASP #10 - Logging: Set up comprehensive logging
@@ -47,10 +51,72 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,  # Only allow configured origins
-    allow_credentials=True,
+    allow_credentials=False,  # No cookies or auth headers are used
     allow_methods=["GET", "POST"],  # Restrict to needed methods only
-    allow_headers=["Content-Type", "Authorization"],  # Restrict headers
+    allow_headers=["Content-Type"],  # Restrict headers
 )
+
+# OWASP #4 - Insecure Design: Limit request body size and request rate per client.
+# The rate limit is per server instance (best effort on serverless); configure a
+# platform-level limit (e.g. Vercel Firewall) for stronger guarantees.
+MAX_BODY_BYTES = 256 * 1024
+RATE_LIMIT_REQUESTS = 120
+RATE_LIMIT_WINDOW_SECONDS = 60
+_request_log: dict = defaultdict(deque)
+security_logger = logging.getLogger("security")
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+@app.middleware("http")
+async def limit_requests(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            too_large = int(content_length) > MAX_BODY_BYTES
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length"})
+        if too_large:
+            return JSONResponse(status_code=413, content={"detail": "Request body too large"})
+    elif request.method == "POST":
+        return JSONResponse(status_code=411, content={"detail": "Content-Length required"})
+
+    now = time.monotonic()
+    ip = _client_ip(request)
+    timestamps = _request_log[ip]
+    while timestamps and now - timestamps[0] > RATE_LIMIT_WINDOW_SECONDS:
+        timestamps.popleft()
+    if len(timestamps) >= RATE_LIMIT_REQUESTS:
+        security_logger.warning(f"Rate limit exceeded for {ip!r}")
+        return JSONResponse(status_code=429, content={"detail": "Too many requests"})
+    timestamps.append(now)
+
+    # Drop idle clients so the tracking dict cannot grow without bound
+    if len(_request_log) > 10_000:
+        for key in [k for k, v in _request_log.items() if not v or now - v[-1] > RATE_LIMIT_WINDOW_SECONDS]:
+            del _request_log[key]
+
+    return await call_next(request)
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    """
+    Return validation errors without echoing the submitted values.
+
+    OWASP #5 - Security Misconfiguration: The default handler reflects the raw
+    input, which leaks data back and fails on values like NaN.
+    """
+    errors = [
+        {"loc": list(err.get("loc", ())), "msg": err.get("msg", ""), "type": err.get("type", "")}
+        for err in exc.errors()[:20]
+    ]
+    return JSONResponse(status_code=422, content={"detail": errors})
+
 
 # Include API routes
 app.include_router(data.router, prefix="/api", tags=["data"])
